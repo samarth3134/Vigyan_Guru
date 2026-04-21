@@ -42,6 +42,7 @@ function ParallaxText({ children, offset = 50 }: { children: React.ReactNode; of
 }
 
 export default function App() {
+  const contactFormRef = useRef<HTMLFormElement>(null);
   const emailJsServiceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
   const emailJsTemplateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
   const emailJsPublicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
@@ -122,17 +123,32 @@ export default function App() {
 
   const handleWhatsApp = () => {
     const whatsappNumber = '918699080802';
+    const formElement = contactFormRef.current;
+    const formValues = formElement ? new FormData(formElement) : null;
+    const nameValue = (formValues?.get('name') as string) || formData.name;
+    const phoneValue = (formValues?.get('phone') as string) || formData.phone;
+    const classValue = (formValues?.get('studentClass') as string) || formData.studentClass;
+    const messageValue = (formValues?.get('message') as string) || formData.message;
     const messageLines = [
       'Hello Madam, I wanted to inquire for admission',
       '',
       'Here are my details:',
-      `Student Name: ${formData.name || 'Not provided'}`,
-      `Phone: ${formData.phone || 'Not provided'}`,
-      `Class: ${formData.studentClass || 'Not provided'}`,
-      `Message: ${formData.message || 'Not provided'}`,
+      `Student Name: ${nameValue || 'Not provided'}`,
+      `Phone: ${phoneValue || 'Not provided'}`,
+      `Class: ${classValue || 'Not provided'}`,
+      `Message: ${messageValue || 'Not provided'}`,
     ];
     const whatsappMessage = encodeURIComponent(messageLines.join('\n'));
-    window.open(`https://wa.me/${whatsappNumber}?text=${whatsappMessage}`, '_blank');
+    const isMobileDevice = /Android|iPhone|iPad|iPod|Windows Phone|webOS/i.test(navigator.userAgent);
+    const mobileUrl = `whatsapp://send?phone=${whatsappNumber}&text=${whatsappMessage}`;
+    const webUrl = `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${whatsappMessage}`;
+
+    if (isMobileDevice) {
+      window.location.href = mobileUrl;
+      return;
+    }
+
+    window.open(webUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -783,10 +799,11 @@ export default function App() {
 
           <div className="grid lg:grid-cols-2 gap-12">
             <AnimatedSection>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form ref={contactFormRef} onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Full Name</label>
                   <input
+                    name="name"
                     type="text"
                     required
                     value={formData.name}
@@ -799,6 +816,7 @@ export default function App() {
                 <div>
                   <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Phone Number</label>
                   <input
+                    name="phone"
                     type="tel"
                     required
                     value={formData.phone}
@@ -811,6 +829,7 @@ export default function App() {
                 <div>
                   <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Class</label>
                   <select
+                    name="studentClass"
                     required
                     value={formData.studentClass}
                     onChange={(e) => setFormData({ ...formData, studentClass: e.target.value })}
@@ -825,6 +844,7 @@ export default function App() {
                 <div>
                   <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Message</label>
                   <textarea
+                    name="message"
                     rows={4}
                     required
                     value={formData.message}
@@ -878,8 +898,8 @@ export default function App() {
 
                 <div className="space-y-4">
                   {[
-                    { icon: Phone, label: 'Phone', value: '+91 9699080802' },
-                    { icon: Mail, label: 'Email', value: 'info@vigyanguru.in' },
+                    { icon: Phone, label: 'Phone', value: '+91 8699080802' },
+                    { icon: Mail, label: 'Email', value: 'vigyanguru891@gmail.com' },
                     { icon: MapPin, label: 'Address', value: '#891 Sector 16\nPanchkula, Haryana' }
                   ].map((item, index) => (
                     <motion.div
@@ -944,8 +964,8 @@ export default function App() {
             <div>
               <h4 className="text-lg mb-4" style={{ fontWeight: 600 }}>Contact Info</h4>
               <ul className="space-y-2 text-gray-300 text-sm">
-                <li>+91 9699080802</li>
-                <li>info@vigyanguru.in</li>
+                <li>+91 8699080802</li>
+                <li>vigyanguru891@gmail.com</li>
                 <li>#891 Sector 16, Panchkula, Haryana</li>
               </ul>
             </div>
