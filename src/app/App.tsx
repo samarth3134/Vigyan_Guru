@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon } from 'lucide-react';
 import { motion, useScroll, useTransform, useInView } from 'motion/react';
 import emailjs from '@emailjs/browser';
+import { Analytics } from '@vercel/analytics/react';
 
 const logoImage = '/assets/logo.png';
 const galleryImage1 = '/assets/classroom-1.png';
@@ -1352,6 +1353,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      <Analytics />
     </div>
   );
 }
