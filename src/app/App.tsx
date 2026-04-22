@@ -1,11 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap } from 'lucide-react';
+import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon } from 'lucide-react';
 import { motion, useScroll, useTransform, useInView } from 'motion/react';
 import emailjs from '@emailjs/browser';
 
 const logoImage = '/assets/logo.png';
 const galleryImage1 = '/assets/classroom-1.png';
 const galleryImage2 = '/assets/classroom-2.png';
+const featuredVideo = '/assets/classroom-reel.mp4';
+const testimonialImage = '/assets/jassal-testimonial.jpg';
+
+type MediaItem = {
+  type: 'image' | 'video';
+  src: string;
+  alt: string;
+  title: string;
+};
+
+type HeroSlide = {
+  src: string;
+  alt: string;
+  orientation: 'landscape' | 'portrait';
+};
+
+const heroSlideshowPool: HeroSlide[] = [
+  { src: '/assets/classroom-1.png', alt: 'Vigyan Guru classroom session', orientation: 'landscape' },
+  { src: '/assets/classroom-3.jpg', alt: 'Vigyan Guru classroom teaching moment', orientation: 'landscape' },
+  { src: '/assets/classroom-5.jpg', alt: 'Vigyan Guru students in class', orientation: 'landscape' },
+  { src: '/assets/classroom-6.png', alt: 'Vigyan Guru classroom activity', orientation: 'landscape' },
+  { src: '/assets/collage-photo.jpg', alt: 'Vigyan Guru classroom collage', orientation: 'landscape' },
+  { src: '/assets/earlier_batch.jpg', alt: 'Vigyan Guru earlier batch photo', orientation: 'landscape' },
+  { src: '/assets/achievers_25-26.png', alt: 'Vigyan Guru achievers board', orientation: 'portrait' },
+  { src: '/assets/2018_poster.jpg', alt: 'Vigyan Guru 2018 poster', orientation: 'portrait' },
+  { src: '/assets/2018_poster_2.jpg', alt: 'Vigyan Guru 2018 alternate poster', orientation: 'portrait' },
+  { src: '/assets/jassal-testimonial.jpg', alt: 'Rahul Jassal testimonial portrait', orientation: 'portrait' },
+  { src: '/assets/rahul jassal.jpg', alt: 'Rahul Jassal portrait', orientation: 'portrait' },
+];
 
 // Animated Section Wrapper
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -51,6 +80,10 @@ export default function App() {
   const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
   const [showSyllabus, setShowSyllabus] = useState(false);
   const [selectedClass, setSelectedClass] = useState<'9' | '10'>('9');
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('vigyan-guru-theme') === 'dark';
+  });
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -59,16 +92,60 @@ export default function App() {
   });
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const [galleryImages] = useState(() => {
+    const shuffle = <T,>(items: T[]) => [...items].sort(() => Math.random() - 0.5);
+    const landscapes = shuffle(heroSlideshowPool.filter((slide) => slide.orientation === 'landscape'));
+    const portraits = shuffle(heroSlideshowPool.filter((slide) => slide.orientation === 'portrait'));
 
-  const galleryImages = [galleryImage1, galleryImage2];
+    return [...landscapes, ...portraits].slice(0, 6);
+  });
+  const currentHeroSlide = galleryImages[currentGalleryIndex] ?? galleryImages[0];
+  const headingTextClass = isDarkMode ? 'text-slate-100' : 'text-[#1F1F1F]';
+  const bodyTextClass = isDarkMode ? 'text-slate-300' : 'text-gray-600';
+  const cardSurfaceClass = isDarkMode ? 'bg-slate-900 border border-white/10 shadow-2xl' : 'bg-white shadow-md';
+  const formFieldClass = isDarkMode
+    ? 'w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E6A700] transition-all'
+    : 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6D1B1B] transition-all';
+
+  const learningMedia = [
+    { type: 'image' as const, src: galleryImage1, alt: 'Vigyan Guru Classroom 1' },
+    { type: 'image' as const, src: galleryImage2, alt: 'Vigyan Guru Classroom 2' },
+    { type: 'image' as const, src: '/assets/classroom-3.jpg', alt: 'Vigyan Guru Classroom 3' },
+    { type: 'image' as const, src: '/assets/classroom-5.jpg', alt: 'Vigyan Guru Classroom 5' },
+    { type: 'image' as const, src: '/assets/classroom-6.png', alt: 'Vigyan Guru Classroom 6' },
+    { type: 'image' as const, src: '/assets/achievers_25-26.png', alt: 'Vigyan Guru achievers board' },
+    { type: 'image' as const, src: '/assets/collage-photo.jpg', alt: 'Vigyan Guru classroom collage' },
+  ];
+  const mediaLibrary: MediaItem[] = [
+    { type: 'image', src: '/assets/2018_poster.jpg', alt: 'Vigyan Guru 2018 poster', title: '2018 Poster' },
+    { type: 'image', src: '/assets/2018_poster_2.jpg', alt: 'Vigyan Guru 2018 poster alternate', title: '2018 Poster Alternate' },
+    { type: 'image', src: '/assets/achievers_25-26.png', alt: 'Vigyan Guru achievers board', title: 'Achievers 2025-26' },
+    { type: 'video', src: '/assets/At vigyan guru ...we do and learn..mp4', alt: 'Vigyan Guru learn and grow video', title: 'Learn and Grow Reel' },
+    { type: 'video', src: '/assets/classroom-reel.mp4', alt: 'Vigyan Guru Farewell reel', title: 'Farewell Reel' },
+    { type: 'image', src: '/assets/classroom-1.png', alt: 'Vigyan Guru Classroom 1', title: 'Classroom 1' },
+    { type: 'image', src: '/assets/classroom-3.jpg', alt: 'Vigyan Guru Classroom 2', title: 'Classroom 2' },
+    { type: 'image', src: '/assets/classroom-5.jpg', alt: 'Vigyan Guru Classroom 3', title: 'Classroom 3' },
+    { type: 'image', src: '/assets/classroom-6.png', alt: 'Vigyan Guru Classroom 4', title: 'Classroom 4' },
+    { type: 'image', src: '/assets/collage-photo.jpg', alt: 'Vigyan Guru classroom collage', title: 'Classroom Collage' },
+    { type: 'image', src: '/assets/earlier_batch.jpg', alt: 'Vigyan Guru earlier batch', title: 'Earlier Batch' },
+    { type: 'image', src: '/assets/jassal-testimonial.jpg', alt: 'Rahul Jassal testimonial portrait', title: 'Topper Testimonial' },
+    { type: 'image', src: '/assets/logo.png', alt: 'Vigyan Guru logo', title: 'Main Logo' },
+    { type: 'image', src: '/assets/old services.jpg', alt: 'Vigyan Guru legacy services poster', title: 'Legacy Services' },
+    { type: 'image', src: '/assets/original_logo.jpg', alt: 'Original Vigyan Guru logo', title: 'Original Logo' },
+    { type: 'image', src: '/assets/poster_original.png', alt: 'Original Vigyan Guru poster', title: 'Original Poster' },
+    { type: 'image', src: '/assets/rahul jassal.jpg', alt: 'Rahul Jassal portrait', title: 'Rahul Jassal' },
+  ];
 
   // Auto-scroll gallery
   useEffect(() => {
+    if (galleryImages.length <= 1) return;
+
     const interval = setInterval(() => {
       setCurrentGalleryIndex((prev) => (prev + 1) % galleryImages.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [galleryImages]);
 
   // Cursor tracking for interactive effects
   useEffect(() => {
@@ -78,6 +155,29 @@ export default function App() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('vigyan-guru-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    if (!selectedMedia) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedMedia(null);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedMedia]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,13 +252,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
+    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-[#1F1F1F]'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
       {/* Navbar with blur effect */}
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm"
+        className={`sticky top-0 z-50 backdrop-blur-md shadow-sm transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/85 border-b border-white/10' : 'bg-white/80'}`}
       >
         <div className="max-w-[1440px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -171,6 +271,14 @@ export default function App() {
             </motion.div>
 
             <div className="hidden lg:flex items-center gap-8">
+              <button
+                type="button"
+                onClick={() => setIsDarkMode((prev) => !prev)}
+                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-[#E6A700]' : 'border-gray-200 bg-white text-[#6D1B1B]'}`}
+                aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
               {['Home', 'Courses', 'Results', 'About', 'Contact'].map((item, i) => (
                 <motion.a
                   key={item}
@@ -178,7 +286,7 @@ export default function App() {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  className="text-[#1F1F1F] hover:text-[#6D1B1B] transition-colors relative group"
+                  className={`transition-colors relative group ${isDarkMode ? 'text-slate-100 hover:text-[#E6A700]' : 'text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
                 >
                   {item}
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#E6A700] group-hover:w-full transition-all duration-300"></span>
@@ -195,7 +303,7 @@ export default function App() {
             </div>
 
             <button
-              className="lg:hidden text-[#1F1F1F]"
+              className={`lg:hidden ${isDarkMode ? 'text-slate-100' : 'text-[#1F1F1F]'}`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -209,11 +317,19 @@ export default function App() {
               exit={{ opacity: 0, height: 0 }}
               className="lg:hidden mt-4 pb-4 flex flex-col gap-4"
             >
+              <button
+                type="button"
+                onClick={() => setIsDarkMode((prev) => !prev)}
+                className={`flex w-fit items-center gap-2 rounded-full border px-4 py-2 transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-[#E6A700]' : 'border-gray-200 bg-white text-[#6D1B1B]'}`}
+              >
+                {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
+                {isDarkMode ? 'Dark Mode' : 'Light Mode'}
+              </button>
               {['Home', 'Courses', 'Results', 'About', 'Contact'].map((item) => (
                 <a
                   key={item}
                   href={`#${item.toLowerCase()}`}
-                  className="text-[#1F1F1F] hover:text-[#6D1B1B] transition-colors"
+                  className={`transition-colors ${isDarkMode ? 'text-slate-100 hover:text-[#E6A700]' : 'text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item}
@@ -228,29 +344,158 @@ export default function App() {
       </motion.nav>
 
       {/* Hero Section with Scrolling Gallery */}
-      <section id="home" className="relative bg-gradient-to-b from-white to-gray-50 overflow-hidden">
+      <section id="home" className={`relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-gradient-to-b from-slate-950 to-slate-900' : 'bg-gradient-to-b from-white to-gray-50'}`}>
         {/* Floating formulas background */}
-        <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <div className={`hidden absolute inset-0 pointer-events-none ${isDarkMode ? 'opacity-20' : 'opacity-10'}`}>
           <motion.div
             animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
             transition={{ duration: 8, repeat: Infinity }}
-            className="absolute top-20 left-20 text-6xl text-[#6D1B1B]"
+            className={`absolute top-20 left-20 text-6xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
           >
             H₂O
           </motion.div>
           <motion.div
             animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
             transition={{ duration: 10, repeat: Infinity }}
-            className="absolute top-40 right-40 text-4xl text-[#6D1B1B]"
+            className={`absolute top-40 right-40 text-4xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
           >
             E=mc²
           </motion.div>
           <motion.div
             animate={{ y: [0, -15, 0] }}
             transition={{ duration: 7, repeat: Infinity }}
-            className="absolute bottom-40 left-60 text-5xl text-[#6D1B1B]"
+            className={`absolute bottom-40 left-60 text-5xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
           >
             CO₂
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 16, 0], rotate: [0, -3, 0] }}
+            transition={{ duration: 9, repeat: Infinity }}
+            className={`absolute top-24 left-[42%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            CHâ‚ƒCOOH
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -18, 0] }}
+            transition={{ duration: 11, repeat: Infinity }}
+            className={`absolute top-1/2 right-16 text-4xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            NaOH
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 14, 0], rotate: [0, 4, 0] }}
+            transition={{ duration: 12, repeat: Infinity }}
+            className={`absolute bottom-20 right-[30%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            HCl
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -12, 0], rotate: [0, -4, 0] }}
+            transition={{ duration: 10, repeat: Infinity }}
+            className={`absolute bottom-24 left-12 text-4xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            NHâ‚„OH
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 10, 0] }}
+            transition={{ duration: 13, repeat: Infinity }}
+            className={`absolute top-14 right-[22%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            Hâ‚‚SOâ‚„
+          </motion.div>
+        </div>
+
+        <div className={`absolute inset-0 pointer-events-none ${isDarkMode ? 'opacity-20' : 'opacity-10'}`}>
+          <motion.div
+            animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
+            transition={{ duration: 8, repeat: Infinity }}
+            className={`absolute top-20 left-20 text-6xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            H<sub>2</sub>O
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
+            transition={{ duration: 10, repeat: Infinity }}
+            className={`absolute top-10 right-[14%] text-4xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            E=mc<sup>2</sup>
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -15, 0] }}
+            transition={{ duration: 7, repeat: Infinity }}
+            className={`absolute bottom-32 left-60 text-5xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            CO<sub>2</sub>
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 16, 0], rotate: [0, -3, 0] }}
+            transition={{ duration: 9, repeat: Infinity }}
+            className={`absolute top-24 right-[26%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            CH<sub>3</sub>COOH
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -18, 0] }}
+            transition={{ duration: 11, repeat: Infinity }}
+            className={`absolute top-[12%] left-[42%] text-4xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            NaOH
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 14, 0], rotate: [0, 4, 0] }}
+            transition={{ duration: 12, repeat: Infinity }}
+            className={`absolute bottom-[30%] right-[18%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            HCl
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -12, 0], rotate: [0, -4, 0] }}
+            transition={{ duration: 10, repeat: Infinity }}
+            className={`absolute bottom-24 left-12 text-4xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            NH<sub>4</sub>OH
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 10, 0] }}
+            transition={{ duration: 13, repeat: Infinity }}
+            className={`absolute bottom-[14%] left-[34%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            H<sub>2</sub>SO<sub>4</sub>
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -14, 0], rotate: [0, 3, 0] }}
+            transition={{ duration: 9.5, repeat: Infinity }}
+            className={`absolute top-[16%] left-[30%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            CaCO<sub>3</sub>
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 12, 0] }}
+            transition={{ duration: 10.5, repeat: Infinity }}
+            className={`absolute top-[56%] right-[8%] text-3xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            KOH
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -10, 0], rotate: [0, -3, 0] }}
+            transition={{ duration: 11.5, repeat: Infinity }}
+            className={`absolute bottom-[34%] left-[36%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            NaCl
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, 15, 0] }}
+            transition={{ duration: 12.5, repeat: Infinity }}
+            className={`absolute bottom-[22%] left-[28%] text-3xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
+          >
+            MgO
+          </motion.div>
+          <motion.div
+            animate={{ y: [0, -11, 0], rotate: [0, 2, 0] }}
+            transition={{ duration: 14, repeat: Infinity }}
+            className={`absolute top-[16%] left-[20%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
+          >
+            C<sub>6</sub>H<sub>12</sub>O<sub>6</sub>
           </motion.div>
         </div>
 
@@ -262,7 +507,7 @@ export default function App() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
-                  className="text-4xl lg:text-5xl xl:text-6xl mb-6 text-[#1F1F1F]"
+                  className={`text-4xl lg:text-5xl xl:text-6xl mb-6 ${headingTextClass}`}
                   style={{ fontWeight: 700 }}
                 >
                   Master CBSE Science with Confidence
@@ -272,7 +517,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="text-lg lg:text-xl text-gray-600 mb-8"
+                className={`text-lg lg:text-xl mb-8 ${bodyTextClass}`}
               >
                 Expert coaching for Class 9 & 10 Science | Concept Clarity | Board Success
               </motion.p>
@@ -307,21 +552,21 @@ export default function App() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 1, delay: 0.3 }}
-              className="relative h-[400px] lg:h-[500px]"
+              className={`relative ${currentHeroSlide?.orientation === 'portrait' ? 'h-[520px] lg:h-[640px]' : 'h-[400px] lg:h-[500px]'}`}
             >
-              <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl">
-                {galleryImages.map((img, index) => (
+              <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl ${isDarkMode ? 'bg-slate-900' : ''}`}>
+                {galleryImages.map((slide, index) => (
                   <motion.img
                     key={index}
-                    src={img}
-                    alt={`Vigyan Guru Classroom ${index + 1}`}
+                    src={slide.src}
+                    alt={slide.alt}
                     initial={{ opacity: 0 }}
                     animate={{
                       opacity: currentGalleryIndex === index ? 1 : 0,
                       scale: currentGalleryIndex === index ? 1 : 1.1,
                     }}
                     transition={{ duration: 1, ease: 'easeInOut' }}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className={`absolute inset-0 w-full h-full ${slide.orientation === 'portrait' ? (isDarkMode ? 'object-contain bg-slate-900 p-4' : 'object-contain bg-white p-4') : 'object-cover'}`}
                   />
                 ))}
               </div>
@@ -343,10 +588,10 @@ export default function App() {
       </section>
 
       {/* Why Choose Us Section with Enhanced Icons */}
-      <section id="about" className="py-20 bg-gray-50">
+      <section id="about" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
-            <h2 className="text-3xl lg:text-4xl text-center mb-12 text-[#1F1F1F]" style={{ fontWeight: 700 }}>
+            <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
               Why Vigyan Guru?
             </h2>
           </AnimatedSection>
@@ -362,7 +607,7 @@ export default function App() {
                 <motion.div
                   whileHover={{ y: -10, boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
                   transition={{ type: 'spring', stiffness: 300 }}
-                  className="bg-white p-8 rounded-2xl shadow-md h-full"
+                  className={`${cardSurfaceClass} p-8 rounded-2xl h-full`}
                 >
                   <motion.div
                     whileHover={{ rotate: 360, scale: 1.1 }}
@@ -371,8 +616,8 @@ export default function App() {
                   >
                     <item.icon className="text-white" size={40} strokeWidth={2.5} />
                   </motion.div>
-                  <h3 className="text-xl mb-3 text-[#1F1F1F]" style={{ fontWeight: 600 }}>{item.title}</h3>
-                  <p className="text-gray-600">{item.desc}</p>
+                  <h3 className={`text-xl mb-3 ${headingTextClass}`} style={{ fontWeight: 600 }}>{item.title}</h3>
+                  <p className={bodyTextClass}>{item.desc}</p>
                 </motion.div>
               </AnimatedSection>
             ))}
@@ -381,10 +626,10 @@ export default function App() {
       </section>
 
       {/* Courses Section with Syllabus Modal */}
-      <section id="courses" className="py-20 bg-white">
+      <section id="courses" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
-            <h2 className="text-3xl lg:text-4xl text-center mb-12 text-[#1F1F1F]" style={{ fontWeight: 700 }}>
+            <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
               Our Courses
             </h2>
           </AnimatedSection>
@@ -395,10 +640,10 @@ export default function App() {
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: 'spring', stiffness: 300 }}
-                className="border-t-4 border-[#E6A700] bg-white rounded-2xl shadow-lg p-8"
+                className={`border-t-4 border-[#E6A700] rounded-2xl p-8 ${isDarkMode ? 'bg-slate-900 border border-white/10 shadow-2xl' : 'bg-white shadow-lg'}`}
               >
-                <h3 className="text-2xl mb-4 text-[#1F1F1F]" style={{ fontWeight: 600 }}>Class 9 Science</h3>
-                <ul className="space-y-3 mb-6 text-gray-600">
+                <h3 className={`text-2xl mb-4 ${headingTextClass}`} style={{ fontWeight: 600 }}>Class 9 Science</h3>
+                <ul className={`space-y-3 mb-6 ${bodyTextClass}`}>
                   {[
                     'Complete CBSE syllabus coverage',
                     'Physics, Chemistry & Biology',
@@ -434,10 +679,10 @@ export default function App() {
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: 'spring', stiffness: 300 }}
-                className="border-t-4 border-[#E6A700] bg-white rounded-2xl shadow-lg p-8"
+                className={`border-t-4 border-[#E6A700] rounded-2xl p-8 ${isDarkMode ? 'bg-slate-900 border border-white/10 shadow-2xl' : 'bg-white shadow-lg'}`}
               >
-                <h3 className="text-2xl mb-4 text-[#1F1F1F]" style={{ fontWeight: 600 }}>Class 10 Science</h3>
-                <ul className="space-y-3 mb-6 text-gray-600">
+                <h3 className={`text-2xl mb-4 ${headingTextClass}`} style={{ fontWeight: 600 }}>Class 10 Science</h3>
+                <ul className={`space-y-3 mb-6 ${bodyTextClass}`}>
                   {[
                     'Board exam focused preparation',
                     'Previous years\' question papers',
@@ -714,10 +959,10 @@ export default function App() {
       </section>
 
       {/* Testimonials Section with Real Testimonial */}
-      <section className="py-20 bg-gray-50">
+      <section className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
-            <h2 className="text-3xl lg:text-4xl text-center mb-12 text-[#1F1F1F]" style={{ fontWeight: 700 }}>
+            <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
               What Our Students Say
             </h2>
           </AnimatedSection>
@@ -728,7 +973,7 @@ export default function App() {
               <motion.div
                 whileHover={{ y: -10, boxShadow: '0 20px 40px rgba(230, 167, 0, 0.2)' }}
                 transition={{ type: 'spring', stiffness: 300 }}
-                className="bg-white p-8 rounded-2xl shadow-md border-2 border-[#E6A700] md:col-span-2"
+                className={`p-8 rounded-2xl border-2 border-[#E6A700] md:col-span-2 ${isDarkMode ? 'bg-slate-900 shadow-2xl' : 'bg-white shadow-md'}`}
               >
                 <div className="flex gap-1 mb-4">
                   {[...Array(5)].map((_, i) => (
@@ -742,13 +987,15 @@ export default function App() {
                     </motion.div>
                   ))}
                 </div>
-                <p className="text-gray-600 mb-6 text-lg leading-relaxed">
+                <p className={`mb-6 text-lg leading-relaxed ${bodyTextClass}`}>
                   "Studying science at VIGYAN GURU (2017–18) has been a memorable journey. It was only by the able guidance of Monika ma'am that I was able to score 100/100 in science (and also became the tricity topper!!). I feared from physics and biology, but studying here made my interest grow in these. Ma'am provided us in-depth knowledge in all physics, chemistry and biology. The tests, homework sheets, printed notes, 3D animations along with the resourceful library were a huge aid to my success. I owe my success to VIGYAN GURU. Thank you Ma'am!!"
                 </p>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#E6A700] to-[#6D1B1B] rounded-full flex items-center justify-center text-white text-xl font-bold">
-                    R
-                  </div>
+                  <img
+                    src={testimonialImage}
+                    alt="Rahul Jassal"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-[#E6A700]"
+                  />
                   <div>
                     <div style={{ fontWeight: 600 }} className="text-lg">Rahul Jassal</div>
                     <div className="text-sm text-[#E6A700] font-semibold">Tricity Topper, 2017-18</div>
@@ -756,30 +1003,81 @@ export default function App() {
                 </div>
               </motion.div>
             </AnimatedSection>
+
+            <AnimatedSection>
+              <motion.div
+                whileHover={{ y: -10 }}
+                transition={{ type: 'spring', stiffness: 300 }}
+                className={`p-4 rounded-2xl border md:col-span-2 ${isDarkMode ? 'bg-slate-900 border-white/10 shadow-2xl' : 'bg-white border-gray-200 shadow-md'}`}
+              >
+                <video
+                  src={featuredVideo}
+                  controls
+                  muted
+                  playsInline
+                  className="w-full rounded-xl max-h-[520px] object-cover"
+                />
+              </motion.div>
+            </AnimatedSection>
           </div>
         </div>
       </section>
 
       {/* Gallery Section */}
-      <section className="py-20 bg-white">
+      <section className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
-            <h2 className="text-3xl lg:text-4xl text-center mb-12 text-[#1F1F1F]" style={{ fontWeight: 700 }}>
-              Our Learning Environment
+            <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
+              Our Complete Media Gallery
             </h2>
           </AnimatedSection>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {galleryImages.map((img, index) => (
+          <AnimatedSection>
+            <p className={`text-center max-w-3xl mx-auto mb-8 text-lg ${bodyTextClass}`}>
+              Scroll through photos, posters, testimonials, and classroom videos from the full media library.
+            </p>
+          </AnimatedSection>
+
+          <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory">
+            {mediaLibrary.map((item, index) => (
               <AnimatedSection key={index}>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   transition={{ type: 'spring', stiffness: 300 }}
-                  className="relative overflow-hidden rounded-2xl shadow-lg h-[300px]"
+                  onClick={() => setSelectedMedia(item)}
+                  className={`relative overflow-hidden rounded-2xl shadow-lg h-[360px] w-[280px] md:w-[340px] shrink-0 snap-start cursor-pointer ${isDarkMode ? 'bg-slate-900' : 'bg-[#F8F5EF]'}`}
                 >
-                  <img src={img} alt={`Classroom ${index + 1}`} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
-                    <p className="text-white font-semibold">Interactive Learning Sessions</p>
+                  {item.type === 'image' ? (
+                    <img src={item.src} alt={item.alt} className="w-full h-full object-cover" />
+                  ) : (
+                    <>
+                      <video
+                        src={item.src}
+                        controls
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-cover bg-black"
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedMedia(item);
+                        }}
+                        className="absolute right-4 top-4 z-10 rounded-full bg-black/70 px-4 py-2 text-sm text-white transition hover:bg-black/85"
+                        aria-label={`Open ${item.title} in enlarged view`}
+                      >
+                        Enlarge
+                      </button>
+                    </>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-5 pointer-events-none">
+                    <p className="text-white font-semibold">{item.title}</p>
+                    <p className="text-white/80 text-sm">
+                      {item.type === 'video' ? 'Tap to enlarge video' : 'Tap to enlarge image'}
+                    </p>
                   </div>
                 </motion.div>
               </AnimatedSection>
@@ -788,11 +1086,66 @@ export default function App() {
         </div>
       </section>
 
+      {selectedMedia ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setSelectedMedia(null)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            onClick={(event) => event.stopPropagation()}
+            className="relative w-full max-w-6xl rounded-3xl overflow-hidden bg-[#111111] shadow-2xl"
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedMedia(null)}
+              className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80"
+              aria-label="Close media viewer"
+            >
+              <X size={22} />
+            </button>
+
+            <div className="max-h-[85vh] overflow-auto">
+              {selectedMedia.type === 'image' ? (
+                <img
+                  src={selectedMedia.src}
+                  alt={selectedMedia.alt}
+                  className="w-full max-h-[75vh] object-contain bg-black"
+                />
+              ) : (
+                <video
+                  src={selectedMedia.src}
+                  controls
+                  muted
+                  playsInline
+                  autoPlay
+                  className="w-full max-h-[75vh] bg-black"
+                />
+              )}
+            </div>
+
+            <div className={`px-6 py-4 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+              <p className={`text-lg ${headingTextClass}`} style={{ fontWeight: 700 }}>
+                {selectedMedia.title}
+              </p>
+              <p className={`text-sm ${bodyTextClass}`}>
+                {selectedMedia.type === 'video' ? '' : selectedMedia.alt}
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+
       {/* Contact Section with EmailJS */}
-      <section id="contact" className="py-20 bg-white">
+      <section id="contact" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
-            <h2 className="text-3xl lg:text-4xl text-center mb-12 text-[#1F1F1F]" style={{ fontWeight: 700 }}>
+            <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
               Get In Touch
             </h2>
           </AnimatedSection>
@@ -801,39 +1154,39 @@ export default function App() {
             <AnimatedSection>
               <form ref={contactFormRef} onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Full Name</label>
+                  <label className={`block text-sm mb-2 ${headingTextClass}`} style={{ fontWeight: 500 }}>Full Name</label>
                   <input
                     name="name"
                     type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6D1B1B] transition-all"
+                    className={formFieldClass}
                     placeholder="Enter your name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Phone Number</label>
+                  <label className={`block text-sm mb-2 ${headingTextClass}`} style={{ fontWeight: 500 }}>Phone Number</label>
                   <input
                     name="phone"
                     type="tel"
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6D1B1B] transition-all"
+                    className={formFieldClass}
                     placeholder="Enter your phone number"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Class</label>
+                  <label className={`block text-sm mb-2 ${headingTextClass}`} style={{ fontWeight: 500 }}>Class</label>
                   <select
                     name="studentClass"
                     required
                     value={formData.studentClass}
                     onChange={(e) => setFormData({ ...formData, studentClass: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6D1B1B] transition-all"
+                    className={formFieldClass}
                   >
                     <option value="">Select your class</option>
                     <option value="Class 9">Class 9</option>
@@ -842,14 +1195,14 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-sm mb-2 text-[#1F1F1F]" style={{ fontWeight: 500 }}>Message</label>
+                  <label className={`block text-sm mb-2 ${headingTextClass}`} style={{ fontWeight: 500 }}>Message</label>
                   <textarea
                     name="message"
                     rows={4}
                     required
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6D1B1B] transition-all"
+                    className={formFieldClass}
                     placeholder="Your message"
                   ></textarea>
                 </div>
@@ -893,8 +1246,8 @@ export default function App() {
             </AnimatedSection>
 
             <AnimatedSection>
-              <div className="bg-gray-50 p-8 rounded-2xl">
-                <h3 className="text-xl mb-6 text-[#1F1F1F]" style={{ fontWeight: 600 }}>Contact Information</h3>
+              <div className={`p-8 rounded-2xl ${isDarkMode ? 'bg-slate-900 border border-white/10' : 'bg-gray-50'}`}>
+                <h3 className={`text-xl mb-6 ${headingTextClass}`} style={{ fontWeight: 600 }}>Contact Information</h3>
 
                 <div className="space-y-4">
                   {[
@@ -910,7 +1263,7 @@ export default function App() {
                       <item.icon className="text-[#E6A700] flex-shrink-0 mt-1" size={20} />
                       <div>
                         <div style={{ fontWeight: 500 }}>{item.label}</div>
-                        <div className="text-gray-600 whitespace-pre-line">{item.value}</div>
+                        <div className={`${bodyTextClass} whitespace-pre-line`}>{item.value}</div>
                       </div>
                     </motion.div>
                   ))}
@@ -938,7 +1291,7 @@ export default function App() {
       </section>
 
       {/* Footer with Animated Social Icons */}
-      <footer className="bg-[#6D1B1B] text-white py-12">
+      <footer className={`text-white py-12 ${isDarkMode ? 'bg-slate-900 border-t border-white/10' : 'bg-[#6D1B1B]'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <motion.div whileHover={{ y: -5 }}>
