@@ -2,39 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon } from 'lucide-react';
 import { motion, useScroll, useTransform, useInView } from 'motion/react';
 import emailjs from '@emailjs/browser';
+import { batchDetails, faqItems, heroFormulas, heroSlideshowPool, mediaLibrary, navItems, type MediaItem } from './site-data';
+import { defaultHomepageSettings, loadSiteContent } from './content';
 
 const logoImage = '/assets/logo.png';
 const galleryImage1 = '/assets/classroom-1.png';
 const galleryImage2 = '/assets/classroom-2.png';
 const featuredVideo = '/assets/classroom-reel.mp4';
 const testimonialImage = '/assets/jassal-testimonial.jpg';
-
-type MediaItem = {
-  type: 'image' | 'video';
-  src: string;
-  alt: string;
-  title: string;
-};
-
-type HeroSlide = {
-  src: string;
-  alt: string;
-  orientation: 'landscape' | 'portrait';
-};
-
-const heroSlideshowPool: HeroSlide[] = [
-  { src: '/assets/classroom-1.png', alt: 'Vigyan Guru classroom session', orientation: 'landscape' },
-  { src: '/assets/classroom-3.jpg', alt: 'Vigyan Guru classroom teaching moment', orientation: 'landscape' },
-  { src: '/assets/classroom-5.jpg', alt: 'Vigyan Guru students in class', orientation: 'landscape' },
-  { src: '/assets/classroom-6.png', alt: 'Vigyan Guru classroom activity', orientation: 'landscape' },
-  { src: '/assets/collage-photo.jpg', alt: 'Vigyan Guru classroom collage', orientation: 'landscape' },
-  { src: '/assets/earlier_batch.jpg', alt: 'Vigyan Guru earlier batch photo', orientation: 'landscape' },
-  { src: '/assets/achievers_25-26.png', alt: 'Vigyan Guru achievers board', orientation: 'portrait' },
-  { src: '/assets/2018_poster.jpg', alt: 'Vigyan Guru 2018 poster', orientation: 'portrait' },
-  { src: '/assets/2018_poster_2.jpg', alt: 'Vigyan Guru 2018 alternate poster', orientation: 'portrait' },
-  { src: '/assets/jassal-testimonial.jpg', alt: 'Rahul Jassal testimonial portrait', orientation: 'portrait' },
-  { src: '/assets/rahul jassal.jpg', alt: 'Rahul Jassal portrait', orientation: 'portrait' },
-];
 
 // Animated Section Wrapper
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -70,6 +45,16 @@ function ParallaxText({ children, offset = 50 }: { children: React.ReactNode; of
   );
 }
 
+function pickHeroSlides(items: typeof heroSlideshowPool) {
+  const shuffle = <T,>(list: T[]) => [...list].sort(() => Math.random() - 0.5);
+  const visibleSlides = items.filter((slide) => slide.visible !== false);
+  const sourceSlides = visibleSlides.filter((slide) => slide.featured !== false);
+  const finalSource = sourceSlides.length > 0 ? sourceSlides : visibleSlides;
+  const landscapes = shuffle(finalSource.filter((slide) => slide.orientation === 'landscape'));
+  const portraits = shuffle(finalSource.filter((slide) => slide.orientation === 'portrait'));
+  return [...landscapes, ...portraits].slice(0, 6);
+}
+
 export default function App() {
   const contactFormRef = useRef<HTMLFormElement>(null);
   const emailJsServiceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
@@ -93,13 +78,14 @@ export default function App() {
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
-  const [galleryImages] = useState(() => {
-    const shuffle = <T,>(items: T[]) => [...items].sort(() => Math.random() - 0.5);
-    const landscapes = shuffle(heroSlideshowPool.filter((slide) => slide.orientation === 'landscape'));
-    const portraits = shuffle(heroSlideshowPool.filter((slide) => slide.orientation === 'portrait'));
-
-    return [...landscapes, ...portraits].slice(0, 6);
-  });
+  const [homepageSettings, setHomepageSettings] = useState(defaultHomepageSettings);
+  const [heroSlides, setHeroSlides] = useState(heroSlideshowPool);
+  const [heroFormulaItems, setHeroFormulaItems] = useState(heroFormulas);
+  const [mediaItems, setMediaItems] = useState(mediaLibrary);
+  const [faqItemsState, setFaqItemsState] = useState(faqItems);
+  const [batchDetailsState, setBatchDetailsState] = useState(batchDetails);
+  const [galleryImages, setGalleryImages] = useState(() => pickHeroSlides(heroSlideshowPool));
+  const visibleMediaLibrary = mediaItems.filter((item) => item.visible !== false);
   const currentHeroSlide = galleryImages[currentGalleryIndex] ?? galleryImages[0];
   const headingTextClass = isDarkMode ? 'text-slate-100' : 'text-[#1F1F1F]';
   const bodyTextClass = isDarkMode ? 'text-slate-300' : 'text-gray-600';
@@ -116,25 +102,6 @@ export default function App() {
     { type: 'image' as const, src: '/assets/classroom-6.png', alt: 'Vigyan Guru Classroom 6' },
     { type: 'image' as const, src: '/assets/achievers_25-26.png', alt: 'Vigyan Guru achievers board' },
     { type: 'image' as const, src: '/assets/collage-photo.jpg', alt: 'Vigyan Guru classroom collage' },
-  ];
-  const mediaLibrary: MediaItem[] = [
-    { type: 'image', src: '/assets/2018_poster.jpg', alt: 'Vigyan Guru 2018 poster', title: '2018 Poster' },
-    { type: 'image', src: '/assets/2018_poster_2.jpg', alt: 'Vigyan Guru 2018 poster alternate', title: '2018 Poster Alternate' },
-    { type: 'image', src: '/assets/achievers_25-26.png', alt: 'Vigyan Guru achievers board', title: 'Achievers 2025-26' },
-    { type: 'video', src: '/assets/At vigyan guru ...we do and learn..mp4', alt: 'Vigyan Guru learn and grow video', title: 'Learn and Grow Reel' },
-    { type: 'video', src: '/assets/classroom-reel.mp4', alt: 'Vigyan Guru Farewell reel', title: 'Farewell Reel' },
-    { type: 'image', src: '/assets/classroom-1.png', alt: 'Vigyan Guru Classroom 1', title: 'Classroom 1' },
-    { type: 'image', src: '/assets/classroom-3.jpg', alt: 'Vigyan Guru Classroom 2', title: 'Classroom 2' },
-    { type: 'image', src: '/assets/classroom-5.jpg', alt: 'Vigyan Guru Classroom 3', title: 'Classroom 3' },
-    { type: 'image', src: '/assets/classroom-6.png', alt: 'Vigyan Guru Classroom 4', title: 'Classroom 4' },
-    { type: 'image', src: '/assets/collage-photo.jpg', alt: 'Vigyan Guru classroom collage', title: 'Classroom Collage' },
-    { type: 'image', src: '/assets/earlier_batch.jpg', alt: 'Vigyan Guru earlier batch', title: 'Earlier Batch' },
-    { type: 'image', src: '/assets/jassal-testimonial.jpg', alt: 'Rahul Jassal testimonial portrait', title: 'Topper Testimonial' },
-    { type: 'image', src: '/assets/logo.png', alt: 'Vigyan Guru logo', title: 'Main Logo' },
-    { type: 'image', src: '/assets/old services.jpg', alt: 'Vigyan Guru legacy services poster', title: 'Legacy Services' },
-    { type: 'image', src: '/assets/original_logo.jpg', alt: 'Original Vigyan Guru logo', title: 'Original Logo' },
-    { type: 'image', src: '/assets/poster_original.png', alt: 'Original Vigyan Guru poster', title: 'Original Poster' },
-    { type: 'image', src: '/assets/rahul jassal.jpg', alt: 'Rahul Jassal portrait', title: 'Rahul Jassal' },
   ];
 
   // Auto-scroll gallery
@@ -159,6 +126,23 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem('vigyan-guru-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
+
+  useEffect(() => {
+    setGalleryImages(pickHeroSlides(heroSlides));
+  }, [heroSlides]);
+
+  useEffect(() => {
+    loadSiteContent().then((content) => {
+      setHomepageSettings(content.homepageSettings);
+      setHeroSlides(content.heroSlides);
+      setHeroFormulaItems(content.heroFormulas);
+      setMediaItems(content.mediaLibrary);
+      setFaqItemsState(content.faqItems);
+      setBatchDetailsState(content.batchDetails);
+    }).catch((error) => {
+      console.error('Content load error:', error);
+    });
+  }, []);
 
   useEffect(() => {
     if (!selectedMedia) return;
@@ -279,7 +263,7 @@ export default function App() {
               >
                 {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
               </button>
-              {['Home', 'Courses', 'Results', 'About', 'Contact'].map((item, i) => (
+              {navItems.map((item, i) => (
                 <motion.a
                   key={item}
                   href={`#${item.toLowerCase()}`}
@@ -325,7 +309,7 @@ export default function App() {
                 {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
                 {isDarkMode ? 'Dark Mode' : 'Light Mode'}
               </button>
-              {['Home', 'Courses', 'Results', 'About', 'Contact'].map((item) => (
+              {navItems.map((item) => (
                 <a
                   key={item}
                   href={`#${item.toLowerCase()}`}
@@ -406,97 +390,15 @@ export default function App() {
         </div>
 
         <div className={`hidden xl:block absolute inset-0 pointer-events-none ${isDarkMode ? 'opacity-20' : 'opacity-10'}`}>
-          <motion.div
-            animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
-            transition={{ duration: 8, repeat: Infinity }}
-            className={`absolute top-20 left-20 text-6xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
-          >
-            H<sub>2</sub>O
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
-            transition={{ duration: 10, repeat: Infinity }}
-            className={`absolute top-10 right-[14%] text-4xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
-          >
-            E=mc<sup>2</sup>
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, -15, 0] }}
-            transition={{ duration: 7, repeat: Infinity }}
-            className={`absolute bottom-32 left-60 text-5xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
-          >
-            CO<sub>2</sub>
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 16, 0], rotate: [0, -3, 0] }}
-            transition={{ duration: 9, repeat: Infinity }}
-            className={`absolute top-24 right-[26%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
-          >
-            CH<sub>3</sub>COOH
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, -18, 0] }}
-            transition={{ duration: 11, repeat: Infinity }}
-            className={`absolute top-[12%] left-[42%] text-4xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
-          >
-            NaOH
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 14, 0], rotate: [0, 4, 0] }}
-            transition={{ duration: 12, repeat: Infinity }}
-            className={`absolute bottom-[30%] right-[18%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
-          >
-            HCl
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, -12, 0], rotate: [0, -4, 0] }}
-            transition={{ duration: 10, repeat: Infinity }}
-            className={`absolute bottom-24 left-12 text-4xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
-          >
-            NH<sub>4</sub>OH
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 13, repeat: Infinity }}
-            className={`absolute bottom-[14%] left-[34%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
-          >
-            H<sub>2</sub>SO<sub>4</sub>
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, -14, 0], rotate: [0, 3, 0] }}
-            transition={{ duration: 9.5, repeat: Infinity }}
-            className={`absolute top-[16%] left-[30%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
-          >
-            CaCO<sub>3</sub>
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 12, 0] }}
-            transition={{ duration: 10.5, repeat: Infinity }}
-            className={`absolute top-[56%] right-[8%] text-3xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
-          >
-            KOH
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, -10, 0], rotate: [0, -3, 0] }}
-            transition={{ duration: 11.5, repeat: Infinity }}
-            className={`absolute bottom-[34%] left-[36%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
-          >
-            NaCl
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 15, 0] }}
-            transition={{ duration: 12.5, repeat: Infinity }}
-            className={`absolute bottom-[22%] left-[28%] text-3xl ${isDarkMode ? 'text-slate-200' : 'text-[#4A1111]'}`}
-          >
-            MgO
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, -11, 0], rotate: [0, 2, 0] }}
-            transition={{ duration: 14, repeat: Infinity }}
-            className={`absolute top-[16%] left-[20%] text-3xl ${isDarkMode ? 'text-slate-300' : 'text-[#4A1111]'}`}
-          >
-            C<sub>6</sub>H<sub>12</sub>O<sub>6</sub>
-          </motion.div>
+          {heroFormulaItems.map((formula) => (
+            <motion.div
+              key={formula.id}
+              animate={formula.animation.rotate ? { y: formula.animation.y, rotate: formula.animation.rotate } : { y: formula.animation.y }}
+              transition={{ duration: formula.duration, repeat: Infinity }}
+              className={`${formula.className} ${isDarkMode ? (formula.darkClassName ?? 'text-slate-200') : (formula.lightClassName ?? 'text-[#4A1111]')}`}
+              dangerouslySetInnerHTML={{ __html: formula.label }}
+            />
+          ))}
         </div>
 
         <div className="max-w-[1440px] mx-auto px-6 py-12 lg:py-24">
@@ -510,7 +412,7 @@ export default function App() {
                   className={`text-4xl lg:text-5xl xl:text-6xl mb-6 ${headingTextClass}`}
                   style={{ fontWeight: 700 }}
                 >
-                  Master CBSE Science with Confidence
+                  {homepageSettings.heroHeading}
                 </motion.h1>
               </ParallaxText>
               <motion.p
@@ -519,7 +421,7 @@ export default function App() {
                 transition={{ duration: 0.8, delay: 0.4 }}
                 className={`text-lg lg:text-xl mb-8 ${bodyTextClass}`}
               >
-                Expert coaching for Class 9 & 10 Science | Concept Clarity | Board Success
+                {homepageSettings.heroSubheading}
               </motion.p>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -533,7 +435,7 @@ export default function App() {
                   whileTap={{ scale: 0.95 }}
                   className="bg-[#6D1B1B] text-white px-8 py-3.5 rounded-lg transition-all inline-flex items-center justify-center gap-2"
                 >
-                  Contact Now
+                  {homepageSettings.primaryCtaLabel}
                   <ChevronRight size={20} />
                 </motion.a>
                 <motion.a
@@ -542,7 +444,7 @@ export default function App() {
                   whileTap={{ scale: 0.95 }}
                   className="border-2 border-[#6D1B1B] text-[#6D1B1B] px-8 py-3.5 rounded-lg hover:bg-[#6D1B1B] hover:text-white transition-all text-center"
                 >
-                  Our Courses
+                  {homepageSettings.secondaryCtaLabel}
                 </motion.a>
               </motion.div>
             </div>
@@ -923,6 +825,90 @@ export default function App() {
         </motion.div>
       )}
 
+      {/* FAQ and Admissions Section */}
+      <section id="faq" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
+        <div className="max-w-[1440px] mx-auto px-6">
+          <AnimatedSection>
+            <h2 className={`text-3xl lg:text-4xl text-center mb-4 ${headingTextClass}`} style={{ fontWeight: 700 }}>
+              Admissions, Timings & FAQ
+            </h2>
+          </AnimatedSection>
+
+          <AnimatedSection>
+            <p className={`text-center max-w-3xl mx-auto mb-12 text-lg ${bodyTextClass}`}>
+              Registrations are open for the 2026-27 academic session for Class 9 and Class 10 science coaching.
+            </p>
+          </AnimatedSection>
+
+          <div className="grid lg:grid-cols-2 gap-8 mb-10">
+            {batchDetailsState.map((batch) => (
+              <AnimatedSection key={batch.className}>
+                <motion.div
+                  whileHover={{ y: -8 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                  className={`rounded-2xl p-8 ${isDarkMode ? 'bg-slate-950 border border-white/10 shadow-2xl' : 'bg-white shadow-lg'}`}
+                >
+                  <div className="inline-flex items-center rounded-full bg-[#E6A700]/15 px-4 py-1.5 text-sm text-[#E6A700] mb-5">
+                    Academic Session 2026-27
+                  </div>
+                  <h3 className={`text-2xl mb-4 ${headingTextClass}`} style={{ fontWeight: 700 }}>
+                    {batch.className}
+                  </h3>
+                  <div className={`space-y-3 ${bodyTextClass}`}>
+                    <p><span className="text-[#E6A700]" style={{ fontWeight: 600 }}>Days:</span> {batch.days}</p>
+                    <p><span className="text-[#E6A700]" style={{ fontWeight: 600 }}>Time:</span> {batch.time}</p>
+                    <p><span className="text-[#E6A700]" style={{ fontWeight: 600 }}>Batch Starts:</span> {batch.starts}</p>
+                  </div>
+                </motion.div>
+              </AnimatedSection>
+            ))}
+          </div>
+
+          <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8">
+            <AnimatedSection>
+              <div className={`rounded-2xl p-8 ${isDarkMode ? 'bg-slate-950 border border-white/10 shadow-2xl' : 'bg-white shadow-lg'}`}>
+                <h3 className={`text-2xl mb-6 ${headingTextClass}`} style={{ fontWeight: 700 }}>
+                  Common Questions
+                </h3>
+                <div className="space-y-4">
+                  {faqItemsState.map((item) => (
+                    <div
+                      key={item.question}
+                      className={`rounded-xl p-5 ${isDarkMode ? 'bg-slate-900 border border-white/10' : 'bg-gray-50 border border-gray-100'}`}
+                    >
+                      <p className={`${headingTextClass} mb-2`} style={{ fontWeight: 600 }}>{item.question}</p>
+                      <p className={bodyTextClass}>{item.answer}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </AnimatedSection>
+
+            <AnimatedSection>
+              <div className={`rounded-2xl p-8 h-full ${isDarkMode ? 'bg-slate-950 border border-white/10 shadow-2xl' : 'bg-white shadow-lg'}`}>
+                <h3 className={`text-2xl mb-5 ${headingTextClass}`} style={{ fontWeight: 700 }}>
+                  Why Parents Choose Vigyan Guru
+                </h3>
+                <div className={`space-y-4 ${bodyTextClass}`}>
+                  <p>28 years of teaching experience with a strong focus on quality science education.</p>
+                  <p>Consistent academic performance and a strong reputation for concept clarity and critical thinking.</p>
+                  <p>Regular openness to parent feedback, student concerns, and class-mode suggestions.</p>
+                  <p>Strong academic culture with dedicated support for sound long-term development in science.</p>
+                </div>
+
+                <div className={`mt-8 rounded-2xl p-6 ${isDarkMode ? 'bg-slate-900 border border-white/10' : 'bg-[#FFF8E1]'}`}>
+                  <p className={`${headingTextClass} mb-2`} style={{ fontWeight: 700 }}>
+                    Registration Contact
+                  </p>
+                  <p className={bodyTextClass}>Phone / WhatsApp: +91 86990 80802</p>
+                  <p className={bodyTextClass}>Address: 891, Sector 16, Panchkula</p>
+                </div>
+              </div>
+            </AnimatedSection>
+          </div>
+        </div>
+      </section>
+
       {/* Results Section with Parallax */}
       <section id="results" className="py-20 bg-[#6D1B1B] relative overflow-hidden">
         <motion.div
@@ -1039,7 +1025,7 @@ export default function App() {
           </AnimatedSection>
 
           <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory">
-            {mediaLibrary.map((item, index) => (
+            {visibleMediaLibrary.map((item, index) => (
               <AnimatedSection key={index}>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
@@ -1304,7 +1290,7 @@ export default function App() {
             <div>
               <h4 className="text-lg mb-4" style={{ fontWeight: 600 }}>Quick Links</h4>
               <ul className="space-y-2 text-gray-300">
-                {['Home', 'Courses', 'Results', 'About', 'Contact'].map((link, index) => (
+                {navItems.map((link, index) => (
                   <motion.li key={link} whileHover={{ x: 5 }}>
                     <a href={`#${link.toLowerCase()}`} className="hover:text-[#E6A700] transition-colors">
                       {link}
