@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon } from 'lucide-react';
+import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon, LogIn } from 'lucide-react';
 import { motion, useScroll, useTransform, useInView } from 'motion/react';
 import emailjs from '@emailjs/browser';
 import { batchDetails, faqItems, heroFormulas, heroSlideshowPool, mediaLibrary, navItems, type MediaItem } from './site-data';
 import { defaultHomepageSettings, loadSiteContent } from './content';
+import LoginModal from './LoginModal';
 
 const logoImage = '/assets/logo.png';
 const galleryImage1 = '/assets/classroom-1.png';
@@ -85,6 +86,7 @@ export default function App() {
   const [faqItemsState, setFaqItemsState] = useState(faqItems);
   const [batchDetailsState, setBatchDetailsState] = useState(batchDetails);
   const [galleryImages, setGalleryImages] = useState(() => pickHeroSlides(heroSlideshowPool));
+  const [showLogin, setShowLogin] = useState(false);
   const visibleMediaLibrary = mediaItems.filter((item) => item.visible !== false);
   const currentHeroSlide = galleryImages[currentGalleryIndex] ?? galleryImages[0];
   const headingTextClass = isDarkMode ? 'text-slate-100' : 'text-[#1F1F1F]';
@@ -254,16 +256,24 @@ export default function App() {
               <img src={logoImage} alt="Vigyan Guru" className="h-16" />
             </motion.div>
 
-            <div className="hidden lg:flex items-center gap-8">
-              <button
-                type="button"
-                onClick={() => setIsDarkMode((prev) => !prev)}
-                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-[#E6A700]' : 'border-gray-200 bg-white text-[#6D1B1B]'}`}
-                aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
-              </button>
-              {navItems.map((item, i) => (
+<div className="hidden lg:flex items-center gap-8">
+               <button
+                 type="button"
+                 onClick={() => setShowLogin(true)}
+                 className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
+               >
+                 <LogIn size={16} />
+                 Login
+               </button>
+               <button
+                 type="button"
+                 onClick={() => setIsDarkMode((prev) => !prev)}
+                 className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-[#E6A700]' : 'border-gray-200 bg-white text-[#6D1B1B]'}`}
+                 aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+               >
+                 {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
+               </button>
+               {navItems.map((item, i) => (
                 <motion.a
                   key={item}
                   href={`#${item.toLowerCase()}`}
@@ -301,6 +311,14 @@ export default function App() {
               exit={{ opacity: 0, height: 0 }}
               className="lg:hidden mt-4 pb-4 flex flex-col gap-4"
             >
+              <button
+                type="button"
+                onClick={() => { setShowLogin(true); setMobileMenuOpen(false); }}
+                className={`flex w-fit items-center gap-2 rounded-full border px-4 py-2 transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-gray-200 bg-white text-[#1F1F1F]'}`}
+              >
+                <LogIn size={18} />
+                Login
+              </button>
               <button
                 type="button"
                 onClick={() => setIsDarkMode((prev) => !prev)}
@@ -617,6 +635,9 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      {/* Login Modal */}
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} isDarkMode={isDarkMode} />
 
       {/* Syllabus Modal */}
       {showSyllabus && (
