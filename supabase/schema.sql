@@ -140,7 +140,25 @@ values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
 drop policy if exists "public read avatars" on storage.objects;
-drop policy if exists "authenticated upload avatars" on storage.objects;
+create policy "public read avatars"
+on storage.objects for select
+using (bucket_id = 'avatars');
 
-create policy "public read avatars" on storage.objects for select using (bucket_id = 'avatars');
-create policy "authenticated upload avatars" on storage.objects for all using (bucket_id = 'avatars' and auth.role() = 'authenticated') with check (bucket_id = 'avatars' and auth.role() = 'authenticated');
+drop policy if exists "authenticated insert avatars" on storage.objects;
+create policy "authenticated insert avatars"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'avatars');
+
+drop policy if exists "authenticated update own avatars" on storage.objects;
+create policy "authenticated update own avatars"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'avatars' and owner = auth.uid())
+with check (bucket_id = 'avatars' and owner = auth.uid());
+
+drop policy if exists "authenticated delete own avatars" on storage.objects;
+create policy "authenticated delete own avatars"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'avatars' and owner = auth.uid());
