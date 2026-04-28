@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Plus, Save, Shield, Trash2 } from 'lucide-react';
+import { LogOut, Plus, Save, Shield, Trash2, Camera, AlertTriangle, Upload } from 'lucide-react';
 import { defaultHomepageSettings, defaultSiteContent, type HomepageSettings } from './content';
 import { getSupabaseClient } from './supabase';
 import type { MediaItem } from './site-data';
@@ -34,6 +34,8 @@ export default function AdminDashboard() {
   const [batchDetails, setBatchDetails] = useState<BatchRecord[]>(defaultSiteContent.batchDetails.map((item, index) => ({ ...item, display_order: index, visible: true })));
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<Status>({ type: 'idle', message: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; index: number } | null>(null);
+  const [uploadingMediaIndex, setUploadingMediaIndex] = useState<number | null>(null);
 
   const missingSupabase = !supabase;
   const statusClass = useMemo(() => {
@@ -128,6 +130,55 @@ export default function AdminDashboard() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setStatus({ type: 'idle', message: '' });
+  }
+
+  async function handleMediaUpload(index: number, event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !supabase) return;
+
+    setUploadingMediaIndex(index);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `admin-${Date.now()}.${fileExt}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      setMediaItems((prev) => prev.map((item, i) => 
+        i === index ? { ...item, src: data.publicUrl } : item
+      ));
+      setStatus({ type: 'success', message: 'Media uploaded successfully.' });
+    } catch (err: any) {
+      setStatus({ type: 'error', message: err.message || 'Upload failed.' });
+    } finally {
+      setUploadingMediaIndex(null);
+    }
+  }
+
+  function confirmDelete(type: string, index: number) {
+    setDeleteConfirm({ type, index });
+  }
+
+  function cancelDelete() {
+    setDeleteConfirm(null);
+  }
+
+  function executeDelete() {
+    if (!deleteConfirm) return;
+    const { type, index } = deleteConfirm;
+    
+    if (type === 'media') setMediaItems((prev) => prev.filter((_, i) => i !== index));
+    else if (type === 'faq') setFaqItems((prev) => prev.filter((_, i) => i !== index));
+    else if (type === 'batch') setBatchDetails((prev) => prev.filter((_, i) => i !== index));
+    else if (type === 'heroSlide') setHeroSlides((prev) => prev.filter((_, i) => i !== index));
+    else if (type === 'heroFormula') setHeroFormulas((prev) => prev.filter((_, i) => i !== index));
+    
+    setDeleteConfirm(null);
+    setStatus({ type: 'success', message: 'Item removed. Click "Save All" to persist.' });
   }
 
   async function saveAll() {
@@ -255,13 +306,79 @@ export default function AdminDashboard() {
           </section>
 
           <section className="rounded-3xl border border-white/10 bg-slate-900 p-8 shadow-2xl">
+            <SectionHeader title="Hero Slides" description="Manage the rotating slideshow on the homepage hero section." />
+            <div className="space-y-4">
+              {heroSlides.map((item, index) => (
+                <div key={`${item.src}-${index}`} className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950 p-4 md:grid-cols-[1.2fr_1fr_auto]">
+                  <div className="space-y-3">
+                    <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.src} onChange={(e) => setHeroSlides((prev) => prev.map((entry, i) => i === index ? { ...entry, src: e.target.value } : entry))} placeholder="Image path" />
+                    <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.alt} onChange={(e) => setHeroSlides((prev) => prev.map((entry, i) => i === index ? { ...entry, alt: e.target.value } : entry))} placeholder="Alt text" />
+                  </div>
+                  <div className="space-y-3">
+                    <select className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.orientation} onChange={(e) => setHeroSlides((prev) => prev.map((entry, i) => i === index ? { ...entry, orientation: e.target.value as 'landscape' | 'portrait' } : entry))}>
+                      <option value="landscape">Landscape</option>
+                      <option value="portrait">Portrait</option>
+                    </select>
+                    <div className="flex gap-4 text-sm text-slate-300">
+                      <label><input type="checkbox" checked={item.visible !== false} onChange={(e) => setHeroSlides((prev) => prev.map((entry, i) => i === index ? { ...entry, visible: e.target.checked } : entry))} /> Visible</label>
+                      <label><input type="checkbox" checked={item.featured === true} onChange={(e) => setHeroSlides((prev) => prev.map((entry, i) => i === index ? { ...entry, featured: e.target.checked } : entry))} /> Featured</label>
+                    </div>
+                  </div>
+                  <button className="rounded-xl border border-red-500/30 px-4 py-2 text-red-300 inline-flex items-center gap-2 self-start" onClick={() => confirmDelete('heroSlide', index)}>
+                    <Trash2 size={16} />
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className="mt-4 rounded-xl border border-white/10 px-4 py-2 inline-flex items-center gap-2" onClick={() => setHeroSlides((prev) => [...prev, { id: crypto.randomUUID(), src: '', alt: '', orientation: 'landscape', featured: false, visible: true, display_order: prev.length }])}>
+              <Plus size={16} />
+              Add Hero Slide
+            </button>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-slate-900 p-8 shadow-2xl">
+            <SectionHeader title="Hero Formulas" description="Floating chemistry/physics formulas shown on the hero section." />
+            <div className="space-y-4">
+              {heroFormulas.map((item, index) => (
+                <div key={`${item.id}-${index}`} className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950 p-4 md:grid-cols-[1.5fr_1fr_auto]">
+                  <div className="space-y-3">
+                    <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.id} onChange={(e) => setHeroFormulas((prev) => prev.map((entry, i) => i === index ? { ...entry, id: e.target.value } : entry))} placeholder="ID (e.g. formula1)" />
+                    <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.label} onChange={(e) => setHeroFormulas((prev) => prev.map((entry, i) => i === index ? { ...entry, label: e.target.value } : entry))} placeholder="Formula (HTML allowed)" />
+                  </div>
+                  <div className="space-y-3">
+                    <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.className} onChange={(e) => setHeroFormulas((prev) => prev.map((entry, i) => i === index ? { ...entry, className: e.target.value } : entry))} placeholder="CSS classes" />
+                    <div className="flex gap-4 text-sm text-slate-300">
+                      <label><input type="checkbox" checked={item.visible !== false} onChange={(e) => setHeroFormulas((prev) => prev.map((entry, i) => i === index ? { ...entry, visible: e.target.checked } : entry))} /> Visible</label>
+                    </div>
+                  </div>
+                  <button className="rounded-xl border border-red-500/30 px-4 py-2 text-red-300 inline-flex items-center gap-2 self-start" onClick={() => confirmDelete('heroFormula', index)}>
+                    <Trash2 size={16} />
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className="mt-4 rounded-xl border border-white/10 px-4 py-2 inline-flex items-center gap-2" onClick={() => setHeroFormulas((prev) => [...prev, { id: `formula${prev.length + 1}`, label: 'H₂O', className: 'absolute top-20 left-20 text-6xl text-[#4A1111]', animation: { y: [0, -20, 0] }, visible: true, display_order: prev.length }])}>
+              <Plus size={16} />
+              Add Formula
+            </button>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-slate-900 p-8 shadow-2xl">
             <SectionHeader title="Media Library" description="Control gallery assets. Toggle `visible` or `featured` without deleting items." />
             <div className="space-y-4">
               {mediaItems.map((item, index) => (
                 <div key={`${item.src}-${index}`} className="grid gap-3 rounded-2xl border border-white/10 bg-slate-950 p-4 md:grid-cols-[1.1fr_1.2fr_0.9fr_auto]">
                   <div className="space-y-3">
                     <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.title} onChange={(e) => setMediaItems((prev) => prev.map((entry, i) => i === index ? { ...entry, title: e.target.value } : entry))} placeholder="Title" />
-                    <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.src} onChange={(e) => setMediaItems((prev) => prev.map((entry, i) => i === index ? { ...entry, src: e.target.value } : entry))} placeholder="Asset path" />
+                    <div className="flex gap-2">
+                      <input className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.src} onChange={(e) => setMediaItems((prev) => prev.map((entry, i) => i === index ? { ...entry, src: e.target.value } : entry))} placeholder="Asset path" />
+                      <label className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 inline-flex items-center gap-1 cursor-pointer hover:bg-slate-800">
+                        {uploadingMediaIndex === index ? <Upload size={16} className="animate-spin" /> : <Camera size={16} />}
+                        <input type="file" accept="image/*,video/*" className="hidden" onChange={(e) => handleMediaUpload(index, e)} />
+                      </label>
+                    </div>
                   </div>
                   <div className="space-y-3">
                     <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.alt} onChange={(e) => setMediaItems((prev) => prev.map((entry, i) => i === index ? { ...entry, alt: e.target.value } : entry))} placeholder="Alt text" />
@@ -277,7 +394,7 @@ export default function AdminDashboard() {
                       <label><input type="checkbox" checked={item.featured === true} onChange={(e) => setMediaItems((prev) => prev.map((entry, i) => i === index ? { ...entry, featured: e.target.checked } : entry))} /> Featured</label>
                     </div>
                   </div>
-                  <button className="rounded-xl border border-red-500/30 px-4 py-2 text-red-300 inline-flex items-center gap-2 self-start" onClick={() => setMediaItems((prev) => prev.filter((_, i) => i !== index))}>
+                  <button className="rounded-xl border border-red-500/30 px-4 py-2 text-red-300 inline-flex items-center gap-2 self-start" onClick={() => confirmDelete('media', index)}>
                     <Trash2 size={16} />
                     Remove
                   </button>
@@ -298,7 +415,7 @@ export default function AdminDashboard() {
                   <div key={`${item.question}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950 p-4 space-y-3">
                     <input className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.question} onChange={(e) => setFaqItems((prev) => prev.map((entry, i) => i === index ? { ...entry, question: e.target.value } : entry))} placeholder="Question" />
                     <textarea className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 min-h-[110px]" value={item.answer} onChange={(e) => setFaqItems((prev) => prev.map((entry, i) => i === index ? { ...entry, answer: e.target.value } : entry))} placeholder="Answer" />
-                    <button className="rounded-lg border border-red-500/30 px-3 py-2 text-red-300" onClick={() => setFaqItems((prev) => prev.filter((_, i) => i !== index))}>Remove</button>
+                    <button className="rounded-lg border border-red-500/30 px-3 py-2 text-red-300" onClick={() => confirmDelete('faq', index)}>Remove</button>
                   </div>
                 ))}
               </div>
@@ -317,7 +434,7 @@ export default function AdminDashboard() {
                     <input className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.days} onChange={(e) => setBatchDetails((prev) => prev.map((entry, i) => i === index ? { ...entry, days: e.target.value } : entry))} placeholder="Days" />
                     <input className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.time} onChange={(e) => setBatchDetails((prev) => prev.map((entry, i) => i === index ? { ...entry, time: e.target.value } : entry))} placeholder="Time" />
                     <input className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2" value={item.starts} onChange={(e) => setBatchDetails((prev) => prev.map((entry, i) => i === index ? { ...entry, starts: e.target.value } : entry))} placeholder="Starts" />
-                    <button className="rounded-lg border border-red-500/30 px-3 py-2 text-red-300 w-fit" onClick={() => setBatchDetails((prev) => prev.filter((_, i) => i !== index))}>Remove</button>
+                    <button className="rounded-lg border border-red-500/30 px-3 py-2 text-red-300 w-fit" onClick={() => confirmDelete('batch', index)}>Remove</button>
                   </div>
                 ))}
               </div>
@@ -329,6 +446,33 @@ export default function AdminDashboard() {
           </section>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl p-8 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="text-red-400" size={24} />
+              <h3 className="text-xl text-slate-100" style={{ fontWeight: 600 }}>Confirm Delete</h3>
+            </div>
+            <p className="text-slate-300 mb-6">Are you sure you want to delete this item? This action can be undone by clicking "Save All" if needed.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={cancelDelete}
+                className="px-5 py-2.5 rounded-xl border border-white/10 text-slate-300 hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-5 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
