@@ -122,6 +122,10 @@ export default function App() {
     return () => clearInterval(interval);
   }, [galleryImages]);
 
+  const handleGalleryClick = () => {
+    setCurrentGalleryIndex((prev) => (prev + 1) % galleryImages.length);
+  };
+
   // Cursor tracking for interactive effects
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -556,14 +560,16 @@ export default function App() {
               </motion.div>
             </div>
 
-            {/* Scrolling Gallery */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 1, delay: 0.3 }}
-              className={`relative ${currentHeroSlide?.orientation === 'portrait' ? 'h-[520px] lg:h-[640px]' : 'h-[400px] lg:h-[500px]'}`}
-            >
-              <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl ${isDarkMode ? 'bg-slate-900' : ''}`}>
+{/* Scrolling Gallery */}
+             <motion.div
+               initial={{ opacity: 0, x: 50 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ duration: 1, delay: 0.3 }}
+               className={`relative ${currentHeroSlide?.orientation === 'portrait' ? 'h-[520px] lg:h-[640px]' : 'h-[400px] lg:h-[500px]'}`}
+               onClick={handleGalleryClick}
+               style={{ cursor: galleryImages.length > 1 ? 'pointer' : 'default' }}
+             >
+               <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl ${isDarkMode ? 'bg-slate-900' : ''}`}>
                 {galleryImages.map((slide, index) => (
                   <motion.img
                     key={index}
