@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon, LogIn } from 'lucide-react';
+import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon, LogIn, User, LogOut, Camera } from 'lucide-react';
 import { motion, useScroll, useTransform, useInView } from 'motion/react';
 import emailjs from '@emailjs/browser';
 import { batchDetails, faqItems, heroFormulas, heroSlideshowPool, mediaLibrary, navItems, type MediaItem } from './site-data';
 import { defaultHomepageSettings, loadSiteContent } from './content';
 import LoginModal from './LoginModal';
+import ProfileModal from './ProfileModal';
+import { getSupabaseClient } from './supabase';
 
 const logoImage = '/assets/logo.png';
 const galleryImage1 = '/assets/classroom-1.png';
@@ -87,6 +89,10 @@ export default function App() {
   const [batchDetailsState, setBatchDetailsState] = useState(batchDetails);
   const [galleryImages, setGalleryImages] = useState(() => pickHeroSlides(heroSlideshowPool));
   const [showLogin, setShowLogin] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<{ name: string; bio: string; interests: string; avatar_url: string }>({ name: "", bio: "", interests: "", avatar_url: "" });
+  const [showProfile, setShowProfile] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const visibleMediaLibrary = mediaItems.filter((item) => item.visible !== false);
   const currentHeroSlide = galleryImages[currentGalleryIndex] ?? galleryImages[0];
   const headingTextClass = isDarkMode ? 'text-slate-100' : 'text-[#1F1F1F]';
@@ -145,6 +151,49 @@ export default function App() {
       console.error('Content load error:', error);
     });
   }, []);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) loadProfile(session.user.id);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setShowLogin(false);
+      if (session?.user) loadProfile(session.user.id);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const loadProfile = async (userId: string) => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    const { data } = await supabase.from("profiles").select("name, bio, interests, avatar_url").eq("id", userId).single();
+    if (data) setProfile({ name: data.name ?? "", bio: data.bio ?? "", interests: data.interests ?? "", avatar_url: data.avatar_url ?? "" });
+  };
+
+  const handleLogout = async () => {
+    const supabase = getSupabaseClient();
+    await supabase?.auth.signOut();
+    setUser(null);
+    setProfile({ name: "", bio: "", interests: "", avatar_url: "" });
+  };
+
+  const handleLoginSuccess = () => {
+    const supabase = getSupabaseClient();
+    supabase?.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) loadProfile(session.user.id);
+    });
+  };
+
+  const handleProfileUpdate = (updated: { name: string; bio: string; interests: string; avatar_url: string }) => {
+    setProfile(updated);
+  };
 
   useEffect(() => {
     if (!selectedMedia) return;
@@ -257,14 +306,33 @@ export default function App() {
             </motion.div>
 
 <div className="hidden lg:flex items-center gap-8">
-               <button
-                 type="button"
-                 onClick={() => setShowLogin(true)}
-                 className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
-               >
-                 <LogIn size={16} />
-                 Login
-               </button>
+               {user ? (
+                 <div className="flex items-center gap-3">
+                   <button
+                     onClick={() => setShowProfile(true)}
+                     className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
+                   >
+                     <User size={16} />
+                     {profile.name || user.email?.split('@')[0] || 'User'}
+                   </button>
+                   <button
+                     onClick={handleLogout}
+                     className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-300 hover:text-red-400' : 'border-gray-200 bg-white text-gray-600 hover:text-red-600'}`}
+                   >
+                     <LogOut size={16} />
+                     Logout
+                   </button>
+                 </div>
+               ) : (
+                 <button
+                   type="button"
+                   onClick={() => setShowLogin(true)}
+                   className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
+                 >
+                   <LogIn size={16} />
+                   Login
+                 </button>
+               )}
                <button
                  type="button"
                  onClick={() => setIsDarkMode((prev) => !prev)}
@@ -311,14 +379,35 @@ export default function App() {
               exit={{ opacity: 0, height: 0 }}
               className="lg:hidden mt-4 pb-4 flex flex-col gap-4"
             >
-              <button
-                type="button"
-                onClick={() => { setShowLogin(true); setMobileMenuOpen(false); }}
-                className={`flex w-fit items-center gap-2 rounded-full border px-4 py-2 transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-gray-200 bg-white text-[#1F1F1F]'}`}
-              >
-                <LogIn size={18} />
-                Login
-              </button>
+              {user ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { setShowProfile(true); setMobileMenuOpen(false); }}
+                    className={`flex w-fit items-center gap-2 rounded-full border px-4 py-2 transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-gray-200 bg-white text-[#1F1F1F]'}`}
+                  >
+                    <User size={18} />
+                    {profile.name || user.email?.split('@')[0] || 'User'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                    className={`flex w-fit items-center gap-2 rounded-full border px-4 py-2 transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-gray-200 bg-white text-gray-600'}`}
+                  >
+                    <LogOut size={18} />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setShowLogin(true); setMobileMenuOpen(false); }}
+                  className={`flex w-fit items-center gap-2 rounded-full border px-4 py-2 transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100' : 'border-gray-200 bg-white text-[#1F1F1F]'}`}
+                >
+                  <LogIn size={18} />
+                  Login
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsDarkMode((prev) => !prev)}
@@ -637,7 +726,19 @@ export default function App() {
       </section>
 
       {/* Login Modal */}
-      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} isDarkMode={isDarkMode} />
+      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} isDarkMode={isDarkMode} onLoginSuccess={handleLoginSuccess} />
+
+      {/* Profile Modal */}
+      {user && (
+        <ProfileModal
+          isOpen={showProfile}
+          onClose={() => setShowProfile(false)}
+          isDarkMode={isDarkMode}
+          userId={user.id}
+          initialProfile={profile}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      )}
 
       {/* Syllabus Modal */}
       {showSyllabus && (

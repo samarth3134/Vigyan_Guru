@@ -7,11 +7,12 @@ interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   isDarkMode: boolean;
+  onLoginSuccess?: () => void;
 }
 
 type AuthView = "login" | "signup" | "forgot";
 
-export default function LoginModal({ isOpen, onClose, isDarkMode }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, isDarkMode, onLoginSuccess }: LoginModalProps) {
   const [view, setView] = useState<AuthView>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,17 +47,29 @@ export default function LoginModal({ isOpen, onClose, isDarkMode }: LoginModalPr
 
     try {
       if (view === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: window.location.origin, data: { name: "" } },
         });
-        if (error) throw error;
-        setSuccess("Account created! Check your email to confirm.");
+        if (error) {
+          if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already in use")) {
+            setError("This email is already registered. Try logging in instead.");
+            setLoading(false);
+            return;
+          }
+          throw error;
+        }
+        if (data.user && !data.session) {
+          setSuccess("Account exists but not confirmed. Use 'Forgot Password' if needed.");
+        } else {
+          setSuccess("Account created! Check your email to confirm.");
+        }
       } else if (view === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         setSuccess("Logged in successfully!");
+        onLoginSuccess?.();
         setTimeout(onClose, 800);
       }
     } catch (err: any) {

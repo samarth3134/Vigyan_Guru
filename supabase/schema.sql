@@ -98,3 +98,49 @@ create policy "authenticated write hero_slides" on public.hero_slides for all us
 create policy "authenticated write hero_formulas" on public.hero_formulas for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "authenticated write faq_items" on public.faq_items for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 create policy "authenticated write batch_details" on public.batch_details for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  name text,
+  bio text,
+  interests text,
+  avatar_url text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+drop policy if exists "public read profiles" on public.profiles;
+drop policy if exists "authenticated update own profile" on public.profiles;
+
+create policy "public read profiles" on public.profiles for select using (true);
+create policy "authenticated update own profile" on public.profiles for all using (auth.uid() = id) with check (auth.uid() = id);
+
+insert into public.profiles (id, name)
+select id, '' from auth.users
+on conflict (id) do nothing;
+
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, name)
+  values (new.id, coalesce(new.raw_user_meta_data->>'name', ''))
+  on conflict (id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists "public read avatars" on storage.objects;
+drop policy if exists "authenticated upload avatars" on storage.objects;
+
+create policy "public read avatars" on storage.objects for select using (bucket_id = 'avatars');
+create policy "authenticated upload avatars" on storage.objects for all using (bucket_id = 'avatars' and auth.role() = 'authenticated') with check (bucket_id = 'avatars' and auth.role() = 'authenticated');
