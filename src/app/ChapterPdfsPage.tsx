@@ -118,8 +118,9 @@ export default function ChapterPdfsPage() {
 
   const headingTextClass = isDarkMode ? 'text-slate-100' : 'text-[#1F1F1F]';
   const bodyTextClass = isDarkMode ? 'text-slate-300' : 'text-gray-600';
-  const viewerSrc = selectedPdf ? `${selectedPdf.chapter.href}#toolbar=1&navpanes=0` : '';
-
+  const viewerSrc = selectedPdf
+  ? `${window.location.origin}${selectedPdf.chapter.href}#toolbar=1&navpanes=0`
+  : '';
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-[#1F1F1F]'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
       <nav className={`sticky top-0 z-50 backdrop-blur-md shadow-sm transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/85 border-b border-white/10' : 'bg-white/80'}`}>
@@ -165,7 +166,7 @@ export default function ChapterPdfsPage() {
               Chapter PDFs
             </h1>
             <p className={`text-lg max-w-3xl mx-auto ${bodyTextClass}`}>
-              Class-wise NCERT science chapter PDFs for quick reading and revision, updated for the 2026-27 academic session.
+              Class-wise NCERT science chapter PDFs for quick reading and revision.
             </p>
           </motion.div>
 
