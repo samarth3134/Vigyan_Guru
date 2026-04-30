@@ -82,7 +82,7 @@ function ChapterGroup({
                   View
                 </button>
                 <a
-                  href={chapter.href}
+                  href={`${window.location.origin}${chapter.href}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   download
@@ -216,7 +216,7 @@ export default function ChapterPdfsPage() {
 
               <div className="flex flex-wrap gap-2">
                 <a
-                  href={selectedPdf.chapter.href}
+                  href={`${window.location.origin}${selectedPdf.chapter.href}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-4 text-sm transition-colors ${isDarkMode ? 'border-slate-700 text-slate-100 hover:border-[#E6A700] hover:text-[#E6A700]' : 'border-gray-200 text-[#1F1F1F] hover:border-[#6D1B1B] hover:text-[#6D1B1B]'}`}
@@ -225,7 +225,7 @@ export default function ChapterPdfsPage() {
                   Open
                 </a>
                 <a
-                  href={selectedPdf.chapter.href}
+                  href={`${window.location.origin}${selectedPdf.chapter.href}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   download
@@ -247,12 +247,12 @@ export default function ChapterPdfsPage() {
             </div>
 
             <div className={`min-h-0 flex-1 ${isDarkMode ? 'bg-slate-900' : 'bg-gray-100'}`}>
-              <iframe
-                key={selectedPdf.chapter.href}
-                src={viewerSrc}
-                title={`${selectedPdf.className} Chapter ${selectedPdf.chapter.chapter} PDF viewer`}
-                className="h-full w-full"
-              />
+            <iframe
+              key={selectedPdf.chapter.href}
+              src={`${window.location.origin}${selectedPdf.chapter.href}`}
+              title={`${selectedPdf.className} Chapter ${selectedPdf.chapter.chapter} PDF viewer`}
+              className="h-full w-full"
+            />
             </div>
           </motion.div>
         </motion.div>

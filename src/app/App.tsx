@@ -92,9 +92,9 @@ function FloatingFormulaItem({
   return (
     <motion.div
       style={{
-        transform: `translate3d(${particle.x - particle.width / 2}px, ${particle.y - particle.height / 2}px, 0)`,
-        width: particle.width,
-        height: particle.height,
+        transform: `translate3d(${particle.x - particle.radius}px, ${particle.y - particle.radius}px, 0)`,
+        width: particle.radius * 2,
+        height: particle.radius * 2,
       }}
       className={`absolute flex items-center justify-center whitespace-nowrap will-change-transform ${
         isDarkMode ? (particle.darkClassName ?? 'text-slate-200') : (particle.lightClassName ?? 'text-[#4A1111]')
@@ -125,8 +125,7 @@ type FormulaParticle = {
   y: number;
   vx: number;
   vy: number;
-  width: number;
-  height: number;
+  radius: number;
   fontSize: number;
   duration: number;
   rotate: number[];
@@ -150,14 +149,11 @@ function createFormulaParticles(formulas: typeof heroFormulas, width: number, he
       ? 18 + (index % 4) * 3
       : 28 + (index % 5) * 7;
     const textWeight = formula.label.replace(/<[^>]*>/g, '').length;
-    const boxWidth = Math.max(isMobile ? 84 : 120, textWeight * fontSize * 0.72);
-    const boxHeight = fontSize * (isMobile ? 2.25 : 2.35);
-    const halfWidth = boxWidth / 2;
-    const halfHeight = boxHeight / 2;
+    const radius = Math.max(isMobile ? 36 : 52, textWeight * fontSize * 0.24);
     const jitterX = ((index * 37) % 29 - 14) * (isMobile ? 1.1 : 2);
     const jitterY = ((index * 53) % 31 - 15) * (isMobile ? 1 : 1.8);
-    const x = Math.min(width - halfWidth, Math.max(halfWidth, column * cellWidth + cellWidth / 2 + jitterX));
-    const y = Math.min(height - halfHeight, Math.max(halfHeight, row * cellHeight + cellHeight / 2 + jitterY));
+    const x = Math.min(width - radius, Math.max(radius, column * cellWidth + cellWidth / 2 + jitterX));
+    const y = Math.min(height - radius, Math.max(radius, row * cellHeight + cellHeight / 2 + jitterY));
     const direction = index % 2 === 0 ? 1 : -1;
     const speed = isMobile ? 0.28 + (index % 3) * 0.06 : 0.42 + (index % 4) * 0.08;
 
@@ -168,8 +164,7 @@ function createFormulaParticles(formulas: typeof heroFormulas, width: number, he
       y,
       vx: direction * speed,
       vy: (index % 3 === 0 ? -1 : 1) * speed * 0.75,
-      width: boxWidth,
-      height: boxHeight,
+      radius,
       fontSize,
       duration: Math.max(5.5, formula.duration * 0.7),
       rotate: formula.animation.rotate ?? [0, direction * 9, -direction * 5, 0],
@@ -219,22 +214,20 @@ function DynamicFormulaBackground({
         for (const particle of next) {
           particle.x += particle.vx * delta;
           particle.y += particle.vy * delta;
-          const halfWidth = particle.width / 2;
-          const halfHeight = particle.height / 2;
 
-          if (particle.x - halfWidth < 0) {
-            particle.x = halfWidth;
+          if (particle.x - particle.radius < 0) {
+            particle.x = particle.radius;
             particle.vx = Math.abs(particle.vx);
-          } else if (particle.x + halfWidth > width) {
-            particle.x = width - halfWidth;
+          } else if (particle.x + particle.radius > width) {
+            particle.x = width - particle.radius;
             particle.vx = -Math.abs(particle.vx);
           }
 
-          if (particle.y - halfHeight < 0) {
-            particle.y = halfHeight;
+          if (particle.y - particle.radius < 0) {
+            particle.y = particle.radius;
             particle.vy = Math.abs(particle.vy);
-          } else if (particle.y + halfHeight > height) {
-            particle.y = height - halfHeight;
+          } else if (particle.y + particle.radius > height) {
+            particle.y = height - particle.radius;
             particle.vy = -Math.abs(particle.vy);
           }
         }
@@ -245,39 +238,37 @@ function DynamicFormulaBackground({
             const b = next[j];
             const dx = b.x - a.x;
             const dy = b.y - a.y;
-            const padding = 16;
-            const overlapX = (a.width + b.width) / 2 + padding - Math.abs(dx);
-            const overlapY = (a.height + b.height) / 2 + padding - Math.abs(dy);
+            const distance = Math.hypot(dx, dy) || 1;
+            const minimumDistance = a.radius + b.radius + 10;
 
-            if (overlapX > 0 && overlapY > 0) {
-              if (overlapX < overlapY) {
-                const push = overlapX / 2;
-                const direction = dx >= 0 ? 1 : -1;
-                a.x -= push * direction;
-                b.x += push * direction;
+            if (distance < minimumDistance) {
+              const nx = dx / distance;
+              const ny = dy / distance;
+              const overlap = (minimumDistance - distance) / 2;
 
-                const aVx = a.vx;
-                a.vx = -Math.abs(b.vx) * direction;
-                b.vx = Math.abs(aVx) * direction;
-              } else {
-                const push = overlapY / 2;
-                const direction = dy >= 0 ? 1 : -1;
-                a.y -= push * direction;
-                b.y += push * direction;
+              a.x -= nx * overlap;
+              a.y -= ny * overlap;
+              b.x += nx * overlap;
+              b.y += ny * overlap;
 
-                const aVy = a.vy;
-                a.vy = -Math.abs(b.vy) * direction;
-                b.vy = Math.abs(aVy) * direction;
+              const relativeVelocityX = b.vx - a.vx;
+              const relativeVelocityY = b.vy - a.vy;
+              const velocityAlongNormal = relativeVelocityX * nx + relativeVelocityY * ny;
+
+              if (velocityAlongNormal < 0) {
+                const impulse = velocityAlongNormal;
+                a.vx += impulse * nx;
+                a.vy += impulse * ny;
+                b.vx -= impulse * nx;
+                b.vy -= impulse * ny;
               }
             }
           }
         }
 
         for (const particle of next) {
-          const halfWidth = particle.width / 2;
-          const halfHeight = particle.height / 2;
-          particle.x = Math.min(width - halfWidth, Math.max(halfWidth, particle.x));
-          particle.y = Math.min(height - halfHeight, Math.max(halfHeight, particle.y));
+          particle.x = Math.min(width - particle.radius, Math.max(particle.radius, particle.x));
+          particle.y = Math.min(height - particle.radius, Math.max(particle.radius, particle.y));
         }
 
         return next;
