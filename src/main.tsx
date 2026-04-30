@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router";
 import AdminDashboard from "./app/AdminDashboard.tsx";
 import App from "./app/App.tsx";
+import ChapterPdfsPage from "./app/ChapterPdfsPage.tsx";
 import LandingPage from "./app/LandingPage.tsx";
 import ResetPassword from "./app/ResetPassword";
 import "./styles/index.css";
@@ -21,6 +22,7 @@ function Main() {
 
   if (location.pathname.startsWith("/admin")) return <AdminDashboard />;
   if (location.pathname === "/reset-password") return <ResetPassword />;
+  if (location.pathname === "/chapters") return <ChapterPdfsPage />;
   if (showLanding) return <LandingPage onEnter={handleEnter} />;
   return <App />;
 }

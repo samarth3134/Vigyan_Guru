@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronRight, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon, LogIn, User, LogOut, Camera } from 'lucide-react';
+import { Menu, X, ChevronRight, ChevronLeft, Award, Users, BookOpen, TrendingUp, Star, Phone, Mail, MapPin, Facebook, Instagram, Youtube, MessageCircle, Zap, Target, GraduationCap, Sun, Moon, LogIn, User, LogOut } from 'lucide-react';
 import { motion, useScroll, useTransform, useInView } from 'motion/react';
 import emailjs from '@emailjs/browser';
 import { batchDetails, faqItems, heroFormulas, heroSlideshowPool, mediaLibrary, navItems, type MediaItem } from './site-data';
 import { defaultHomepageSettings, loadSiteContent } from './content';
+import { class10ChapterPdfs, class9ChapterPdfs } from './chapter-pdfs';
 import LoginModal from './LoginModal';
 import ProfileModal from './ProfileModal';
 import { getSupabaseClient } from './supabase';
@@ -13,6 +14,39 @@ const galleryImage1 = '/assets/classroom-1.png';
 const galleryImage2 = '/assets/classroom-2.png';
 const featuredVideo = '/assets/classroom-reel.mp4';
 const testimonialImage = '/assets/jassal-testimonial.jpg';
+
+const syllabusTopicPreviews: Record<'9' | '10', Record<number, string[]>> = {
+  '9': {
+    1: ['Scientific method', 'Laboratory safety', 'Observation skills', 'Measurement basics', 'Science in daily life'],
+    2: ['Cell structure', 'Cell organelles', 'Plant and animal cells', 'Microscope use', 'Cell functions'],
+    3: ['Plant tissues', 'Animal tissues', 'Epithelial tissue', 'Muscle tissue', 'Tissue functions'],
+    4: ['Distance and displacement', 'Speed and velocity', 'Acceleration', 'Motion graphs', 'Uniform motion'],
+    5: ['Mixtures and solutions', 'Separation methods', 'Filtration', 'Evaporation', 'Chromatography'],
+    6: ['Force and motion', 'Newton laws', 'Inertia', 'Momentum', 'Balanced forces'],
+    7: ['Work done', 'Energy forms', 'Power', 'Simple machines', 'Mechanical advantage'],
+    8: ['Atomic models', 'Subatomic particles', 'Atomic number', 'Mass number', 'Isotopes'],
+    9: ['Atoms and molecules', 'Chemical formulae', 'Valency', 'Molecular mass', 'Mole concept basics'],
+    10: ['Sound production', 'Wave properties', 'Frequency and amplitude', 'Echoes', 'Applications of sound'],
+    11: ['Asexual reproduction', 'Sexual reproduction', 'Plant reproduction', 'Human reproduction basics', 'Life cycles'],
+    12: ['Classification systems', 'Diversity of organisms', 'Taxonomy', 'Plant groups', 'Animal groups'],
+    13: ['Earth systems', 'Energy flow', 'Matter cycles', 'Ecosystems', 'Human impact'],
+  },
+  '10': {
+    1: ['Balancing equations', 'Types of reactions', 'Oxidation and reduction', 'Corrosion', 'Rancidity'],
+    2: ['Indicators', 'pH scale', 'Neutralisation', 'Salts', 'Daily-life acids and bases'],
+    3: ['Physical properties', 'Reactivity series', 'Ionic compounds', 'Extraction of metals', 'Corrosion prevention'],
+    4: ['Covalent bonding', 'Carbon chains', 'Functional groups', 'Ethanol and ethanoic acid', 'Soaps and detergents'],
+    5: ['Nutrition', 'Respiration', 'Transportation', 'Excretion', 'Life process coordination'],
+    6: ['Nervous system', 'Hormones', 'Reflex action', 'Plant movements', 'Coordination in humans'],
+    7: ['Asexual reproduction', 'Sexual reproduction', 'Human reproductive system', 'Reproductive health', 'Plant reproduction'],
+    8: ['Inherited traits', 'Mendel experiments', 'Dominant and recessive traits', 'Sex determination', 'Variation'],
+    9: ['Reflection of light', 'Spherical mirrors', 'Refraction', 'Lens formula', 'Image formation'],
+    10: ['Human eye structure', 'Defects of vision', 'Dispersion', 'Atmospheric refraction', 'Scattering of light'],
+    11: ['Electric current', 'Ohm law', 'Resistance', 'Series and parallel circuits', 'Electric power'],
+    12: ['Magnetic field lines', 'Right-hand thumb rule', 'Electromagnets', 'Electric motor', 'Domestic circuits'],
+    13: ['Ecosystems', 'Food chains', 'Ozone layer', 'Waste management', 'Environmental balance'],
+  },
+};
 
 // Animated Section Wrapper
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -45,6 +79,223 @@ function ParallaxText({ children, offset = 50 }: { children: React.ReactNode; of
     <motion.div ref={ref} style={{ y }} className="relative">
       {children}
     </motion.div>
+  );
+}
+
+function FloatingFormulaItem({
+  particle,
+  isDarkMode,
+}: {
+  particle: FormulaParticle;
+  isDarkMode: boolean;
+}) {
+  return (
+    <motion.div
+      style={{
+        transform: `translate3d(${particle.x - particle.width / 2}px, ${particle.y - particle.height / 2}px, 0)`,
+        width: particle.width,
+        height: particle.height,
+      }}
+      className={`absolute flex items-center justify-center whitespace-nowrap will-change-transform ${
+        isDarkMode ? (particle.darkClassName ?? 'text-slate-200') : (particle.lightClassName ?? 'text-[#4A1111]')
+      } drop-shadow-[0_10px_22px_rgba(230,167,0,0.22)]`}
+    >
+      <motion.span
+        className="inline-block"
+        animate={{
+          rotate: particle.rotate,
+          scale: particle.scale,
+        }}
+        transition={{
+          duration: particle.duration,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+        style={{ fontSize: particle.fontSize, fontWeight: 600 }}
+        dangerouslySetInnerHTML={{ __html: particle.label }}
+      />
+    </motion.div>
+  );
+}
+
+type FormulaParticle = {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  width: number;
+  height: number;
+  fontSize: number;
+  duration: number;
+  rotate: number[];
+  scale: number[];
+  darkClassName?: string;
+  lightClassName?: string;
+};
+
+function createFormulaParticles(formulas: typeof heroFormulas, width: number, height: number): FormulaParticle[] {
+  const isMobile = width < 768;
+  const visibleFormulas = formulas.slice(0, isMobile ? 14 : formulas.length);
+  const columns = Math.ceil(Math.sqrt(visibleFormulas.length * (width / Math.max(height, 1))));
+  const rows = Math.ceil(visibleFormulas.length / columns);
+  const cellWidth = width / columns;
+  const cellHeight = height / rows;
+
+  return visibleFormulas.map((formula, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const fontSize = isMobile
+      ? 18 + (index % 4) * 3
+      : 28 + (index % 5) * 7;
+    const textWeight = formula.label.replace(/<[^>]*>/g, '').length;
+    const boxWidth = Math.max(isMobile ? 84 : 120, textWeight * fontSize * 0.72);
+    const boxHeight = fontSize * (isMobile ? 2.25 : 2.35);
+    const halfWidth = boxWidth / 2;
+    const halfHeight = boxHeight / 2;
+    const jitterX = ((index * 37) % 29 - 14) * (isMobile ? 1.1 : 2);
+    const jitterY = ((index * 53) % 31 - 15) * (isMobile ? 1 : 1.8);
+    const x = Math.min(width - halfWidth, Math.max(halfWidth, column * cellWidth + cellWidth / 2 + jitterX));
+    const y = Math.min(height - halfHeight, Math.max(halfHeight, row * cellHeight + cellHeight / 2 + jitterY));
+    const direction = index % 2 === 0 ? 1 : -1;
+    const speed = isMobile ? 0.28 + (index % 3) * 0.06 : 0.42 + (index % 4) * 0.08;
+
+    return {
+      id: formula.id,
+      label: formula.label,
+      x,
+      y,
+      vx: direction * speed,
+      vy: (index % 3 === 0 ? -1 : 1) * speed * 0.75,
+      width: boxWidth,
+      height: boxHeight,
+      fontSize,
+      duration: Math.max(5.5, formula.duration * 0.7),
+      rotate: formula.animation.rotate ?? [0, direction * 9, -direction * 5, 0],
+      scale: [0.92, 1.18, 0.98, 1.1, 0.92],
+      darkClassName: formula.darkClassName,
+      lightClassName: formula.lightClassName,
+    };
+  });
+}
+
+function DynamicFormulaBackground({
+  formulas,
+  isDarkMode,
+}: {
+  formulas: typeof heroFormulas;
+  isDarkMode: boolean;
+}) {
+  const [particles, setParticles] = useState<FormulaParticle[]>([]);
+  const boundsRef = useRef({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const resetParticles = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      boundsRef.current = { width, height };
+      setParticles(createFormulaParticles(formulas, width, height));
+    };
+
+    resetParticles();
+    window.addEventListener('resize', resetParticles);
+    return () => window.removeEventListener('resize', resetParticles);
+  }, [formulas]);
+
+  useEffect(() => {
+    let frameId = 0;
+    let lastTime = performance.now();
+
+    const tick = (now: number) => {
+      const delta = Math.min(2, (now - lastTime) / 16.67);
+      lastTime = now;
+
+      setParticles((current) => {
+        if (current.length === 0) return current;
+        const { width, height } = boundsRef.current;
+        const next = current.map((particle) => ({ ...particle }));
+
+        for (const particle of next) {
+          particle.x += particle.vx * delta;
+          particle.y += particle.vy * delta;
+          const halfWidth = particle.width / 2;
+          const halfHeight = particle.height / 2;
+
+          if (particle.x - halfWidth < 0) {
+            particle.x = halfWidth;
+            particle.vx = Math.abs(particle.vx);
+          } else if (particle.x + halfWidth > width) {
+            particle.x = width - halfWidth;
+            particle.vx = -Math.abs(particle.vx);
+          }
+
+          if (particle.y - halfHeight < 0) {
+            particle.y = halfHeight;
+            particle.vy = Math.abs(particle.vy);
+          } else if (particle.y + halfHeight > height) {
+            particle.y = height - halfHeight;
+            particle.vy = -Math.abs(particle.vy);
+          }
+        }
+
+        for (let i = 0; i < next.length; i += 1) {
+          for (let j = i + 1; j < next.length; j += 1) {
+            const a = next[i];
+            const b = next[j];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const padding = 16;
+            const overlapX = (a.width + b.width) / 2 + padding - Math.abs(dx);
+            const overlapY = (a.height + b.height) / 2 + padding - Math.abs(dy);
+
+            if (overlapX > 0 && overlapY > 0) {
+              if (overlapX < overlapY) {
+                const push = overlapX / 2;
+                const direction = dx >= 0 ? 1 : -1;
+                a.x -= push * direction;
+                b.x += push * direction;
+
+                const aVx = a.vx;
+                a.vx = -Math.abs(b.vx) * direction;
+                b.vx = Math.abs(aVx) * direction;
+              } else {
+                const push = overlapY / 2;
+                const direction = dy >= 0 ? 1 : -1;
+                a.y -= push * direction;
+                b.y += push * direction;
+
+                const aVy = a.vy;
+                a.vy = -Math.abs(b.vy) * direction;
+                b.vy = Math.abs(aVy) * direction;
+              }
+            }
+          }
+        }
+
+        for (const particle of next) {
+          const halfWidth = particle.width / 2;
+          const halfHeight = particle.height / 2;
+          particle.x = Math.min(width - halfWidth, Math.max(halfWidth, particle.x));
+          particle.y = Math.min(height - halfHeight, Math.max(halfHeight, particle.y));
+        }
+
+        return next;
+      });
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  return (
+    <div className={`fixed inset-0 z-0 overflow-hidden pointer-events-none ${isDarkMode ? 'opacity-[0.42]' : 'opacity-[0.32]'}`}>
+      {particles.map((particle) => (
+        <FloatingFormulaItem key={particle.id} particle={particle} isDarkMode={isDarkMode} />
+      ))}
+    </div>
   );
 }
 
@@ -90,9 +341,13 @@ export default function App() {
   const [galleryImages, setGalleryImages] = useState(() => pickHeroSlides(heroSlideshowPool));
   const [showLogin, setShowLogin] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<{ name: string; bio: string; interests: string; avatar_url: string }>({ name: "", bio: "", interests: "", avatar_url: "" });
+  const [profile, setProfile] = useState<{ name: string; bio: string; interests: string; avatar_url: string }>({
+    name: '',
+    bio: '',
+    interests: '',
+    avatar_url: '',
+  });
   const [showProfile, setShowProfile] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const visibleMediaLibrary = mediaItems.filter((item) => item.visible !== false);
   const currentHeroSlide = galleryImages[currentGalleryIndex] ?? galleryImages[0];
   const headingTextClass = isDarkMode ? 'text-slate-100' : 'text-[#1F1F1F]';
@@ -112,6 +367,14 @@ export default function App() {
     { type: 'image' as const, src: '/assets/collage-photo.jpg', alt: 'Vigyan Guru classroom collage' },
   ];
 
+  const goToPreviousGallerySlide = () => {
+    setCurrentGalleryIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
+  };
+
+  const goToNextGallerySlide = () => {
+    setCurrentGalleryIndex((prev) => (prev + 1) % galleryImages.length);
+  };
+
   // Auto-scroll gallery
   useEffect(() => {
     if (galleryImages.length <= 1) return;
@@ -121,10 +384,6 @@ export default function App() {
     }, 4000);
     return () => clearInterval(interval);
   }, [galleryImages]);
-
-  const handleGalleryClick = () => {
-    setCurrentGalleryIndex((prev) => (prev + 1) % galleryImages.length);
-  };
 
   // Cursor tracking for interactive effects
   useEffect(() => {
@@ -168,7 +427,11 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setShowLogin(false);
-      if (session?.user) loadProfile(session.user.id);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setProfile({ name: '', bio: '', interests: '', avatar_url: '' });
+      }
     });
 
     return () => listener.subscription.unsubscribe();
@@ -177,15 +440,29 @@ export default function App() {
   const loadProfile = async (userId: string) => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
-    const { data } = await supabase.from("profiles").select("name, bio, interests, avatar_url").eq("id", userId).single();
-    if (data) setProfile({ name: data.name ?? "", bio: data.bio ?? "", interests: data.interests ?? "", avatar_url: data.avatar_url ?? "" });
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('name, bio, interests, avatar_url')
+      .eq('id', userId)
+      .single();
+
+    if (data) {
+      setProfile({
+        name: data.name ?? '',
+        bio: data.bio ?? '',
+        interests: data.interests ?? '',
+        avatar_url: data.avatar_url ?? '',
+      });
+    }
   };
 
   const handleLogout = async () => {
     const supabase = getSupabaseClient();
     await supabase?.auth.signOut();
     setUser(null);
-    setProfile({ name: "", bio: "", interests: "", avatar_url: "" });
+    setProfile({ name: '', bio: '', interests: '', avatar_url: '' });
+    setShowProfile(false);
   };
 
   const handleLoginSuccess = () => {
@@ -291,7 +568,8 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-[#1F1F1F]'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+    <div className={`relative min-h-screen overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-white text-[#1F1F1F]'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+      <DynamicFormulaBackground formulas={heroFormulaItems} isDarkMode={isDarkMode} />
       {/* Navbar with blur effect */}
       <motion.nav
         initial={{ y: -100 }}
@@ -309,43 +587,45 @@ export default function App() {
               <img src={logoImage} alt="Vigyan Guru" className="h-16" />
             </motion.div>
 
-<div className="hidden lg:flex items-center gap-8">
-               {user ? (
-                 <div className="flex items-center gap-3">
-                   <button
-                     onClick={() => setShowProfile(true)}
-                     className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
-                   >
-                     <User size={16} />
-                     {profile.name || user.email?.split('@')[0] || 'User'}
-                   </button>
-                   <button
-                     onClick={handleLogout}
-                     className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-300 hover:text-red-400' : 'border-gray-200 bg-white text-gray-600 hover:text-red-600'}`}
-                   >
-                     <LogOut size={16} />
-                     Logout
-                   </button>
-                 </div>
-               ) : (
-                 <button
-                   type="button"
-                   onClick={() => setShowLogin(true)}
-                   className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
-                 >
-                   <LogIn size={16} />
-                   Login
-                 </button>
-               )}
-               <button
-                 type="button"
-                 onClick={() => setIsDarkMode((prev) => !prev)}
-                 className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-[#E6A700]' : 'border-gray-200 bg-white text-[#6D1B1B]'}`}
-                 aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-               >
-                 {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
-               </button>
-               {navItems.map((item, i) => (
+            <div className="hidden lg:flex items-center gap-8">
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowProfile(true)}
+                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
+                  >
+                    <User size={16} />
+                    {profile.name || user.email?.split('@')[0] || 'User'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-300 hover:text-red-400' : 'border-gray-200 bg-white text-gray-600 hover:text-red-600'}`}
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowLogin(true)}
+                  className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-slate-100 hover:text-[#E6A700]' : 'border-gray-200 bg-white text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
+                >
+                  <LogIn size={16} />
+                  Login
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsDarkMode((prev) => !prev)}
+                className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900 text-[#E6A700]' : 'border-gray-200 bg-white text-[#6D1B1B]'}`}
+                aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
+              </button>
+              {navItems.map((item, i) => (
                 <motion.a
                   key={item}
                   href={`#${item.toLowerCase()}`}
@@ -358,6 +638,16 @@ export default function App() {
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#E6A700] group-hover:w-full transition-all duration-300"></span>
                 </motion.a>
               ))}
+              <motion.a
+                href="/chapters"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: navItems.length * 0.1 }}
+                className={`transition-colors relative group ${isDarkMode ? 'text-slate-100 hover:text-[#E6A700]' : 'text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
+              >
+                Chapters
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#E6A700] group-hover:w-full transition-all duration-300"></span>
+              </motion.a>
               <motion.a
                 href="#contact"
                 whileHover={{ scale: 1.05 }}
@@ -430,16 +720,27 @@ export default function App() {
                   {item}
                 </a>
               ))}
-              <button className="bg-[#6D1B1B] text-white px-6 py-2.5 rounded-lg hover:bg-[#8B2323] transition-colors">
+              <a
+                href="/chapters"
+                className={`transition-colors ${isDarkMode ? 'text-slate-100 hover:text-[#E6A700]' : 'text-[#1F1F1F] hover:text-[#6D1B1B]'}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Chapters
+              </a>
+              <a
+                href="#contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="bg-[#6D1B1B] text-white px-6 py-2.5 rounded-lg hover:bg-[#8B2323] transition-colors text-center"
+              >
                 Enroll Now
-              </button>
+              </a>
             </motion.div>
           )}
         </div>
       </motion.nav>
 
       {/* Hero Section with Scrolling Gallery */}
-      <section id="home" className={`relative overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-gradient-to-b from-slate-950 to-slate-900' : 'bg-gradient-to-b from-white to-gray-50'}`}>
+      <section id="home" className={`relative z-10 overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-gradient-to-b from-slate-950/88 to-slate-900/82' : 'bg-gradient-to-b from-white/88 to-gray-50/78'}`}>
         {/* Floating formulas background */}
         <div className={`hidden absolute inset-0 pointer-events-none ${isDarkMode ? 'opacity-20' : 'opacity-10'}`}>
           <motion.div
@@ -500,7 +801,7 @@ export default function App() {
           </motion.div>
         </div>
 
-        <div className={`hidden xl:block absolute inset-0 pointer-events-none ${isDarkMode ? 'opacity-20' : 'opacity-10'}`}>
+        <div className="hidden">
           {heroFormulaItems.map((formula) => (
             <motion.div
               key={formula.id}
@@ -560,16 +861,14 @@ export default function App() {
               </motion.div>
             </div>
 
-{/* Scrolling Gallery */}
-             <motion.div
-               initial={{ opacity: 0, x: 50 }}
-               animate={{ opacity: 1, x: 0 }}
-               transition={{ duration: 1, delay: 0.3 }}
-               className={`relative ${currentHeroSlide?.orientation === 'portrait' ? 'h-[520px] lg:h-[640px]' : 'h-[400px] lg:h-[500px]'}`}
-               onClick={handleGalleryClick}
-               style={{ cursor: galleryImages.length > 1 ? 'pointer' : 'default' }}
-             >
-               <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl ${isDarkMode ? 'bg-slate-900' : ''}`}>
+            {/* Scrolling Gallery */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1, delay: 0.3 }}
+              className={`relative ${currentHeroSlide?.orientation === 'portrait' ? 'h-[520px] lg:h-[640px]' : 'h-[400px] lg:h-[500px]'}`}
+            >
+              <div className={`relative w-full h-full rounded-2xl overflow-hidden shadow-2xl ${isDarkMode ? 'bg-slate-900' : ''}`}>
                 {galleryImages.map((slide, index) => (
                   <motion.img
                     key={index}
@@ -584,6 +883,26 @@ export default function App() {
                     className={`absolute inset-0 w-full h-full ${slide.orientation === 'portrait' ? (isDarkMode ? 'object-contain bg-slate-900 p-4' : 'object-contain bg-white p-4') : 'object-cover'}`}
                   />
                 ))}
+                {galleryImages.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={goToPreviousGallerySlide}
+                      className="absolute left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-[#E6A700]"
+                      aria-label="Show previous gallery image"
+                    >
+                      <ChevronLeft size={24} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToNextGallerySlide}
+                      className="absolute right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-[#E6A700]"
+                      aria-label="Show next gallery image"
+                    >
+                      <ChevronRight size={24} />
+                    </button>
+                  </>
+                )}
               </div>
               {/* Gallery indicators */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
@@ -603,7 +922,7 @@ export default function App() {
       </section>
 
       {/* Why Choose Us Section with Enhanced Icons */}
-      <section id="about" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      <section id="about" className={`relative z-10 py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900/82' : 'bg-gray-50/78'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
             <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
@@ -641,12 +960,18 @@ export default function App() {
       </section>
 
       {/* Courses Section with Syllabus Modal */}
-      <section id="courses" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
+      <section id="courses" className={`relative z-10 py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/82' : 'bg-white/78'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
             <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
               Our Courses
             </h2>
+          </AnimatedSection>
+
+          <AnimatedSection>
+            <p className={`text-center max-w-3xl mx-auto mb-10 text-lg ${bodyTextClass}`}>
+              Course syllabus and chapter resources are updated for the 2026-27 academic session.
+            </p>
           </AnimatedSection>
 
           <div className="grid md:grid-cols-2 gap-8">
@@ -731,11 +1056,14 @@ export default function App() {
         </div>
       </section>
 
-      {/* Login Modal */}
-      <LoginModal isOpen={showLogin} onClose={() => setShowLogin(false)} isDarkMode={isDarkMode} onLoginSuccess={handleLoginSuccess} />
+      <LoginModal
+        isOpen={showLogin}
+        onClose={() => setShowLogin(false)}
+        isDarkMode={isDarkMode}
+        onLoginSuccess={handleLoginSuccess}
+      />
 
-      {/* Profile Modal */}
-      {user && (
+      {user ? (
         <ProfileModal
           isOpen={showProfile}
           onClose={() => setShowProfile(false)}
@@ -744,7 +1072,7 @@ export default function App() {
           initialProfile={profile}
           onProfileUpdate={handleProfileUpdate}
         />
-      )}
+      ) : null}
 
       {/* Syllabus Modal */}
       {showSyllabus && (
@@ -760,21 +1088,67 @@ export default function App() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300 }}
-            className="bg-white rounded-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto p-8"
+            className={`rounded-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto p-8 ${isDarkMode ? 'bg-slate-950 border border-white/10 shadow-2xl' : 'bg-white'}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-[#1F1F1F]">
+              <h3 className={`text-2xl font-bold ${headingTextClass}`}>
                 📘 CBSE Class {selectedClass} Science Syllabus
               </h3>
               <button
                 onClick={() => setShowSyllabus(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className={isDarkMode ? 'text-slate-400 hover:text-slate-100' : 'text-gray-500 hover:text-gray-700'}
               >
                 <X size={24} />
               </button>
             </div>
 
+            <div className="space-y-3">
+              {(selectedClass === '9' ? class9ChapterPdfs : class10ChapterPdfs).map((chapter) => (
+                <div
+                  key={`${selectedClass}-${chapter.chapter}`}
+                  tabIndex={0}
+                  className={`group rounded-xl border p-4 transition-colors focus:border-[#E6A700] focus:outline-none ${
+                    isDarkMode
+                      ? 'border-white/10 bg-slate-900 hover:border-[#E6A700] hover:bg-slate-800 focus:bg-slate-800'
+                      : 'border-gray-100 bg-gray-50 hover:border-[#E6A700] hover:bg-[#FFF8E1] focus:bg-[#FFF8E1]'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#E6A700] text-sm font-bold text-[#1F1F1F]">
+                      {chapter.chapter}
+                    </div>
+                    <div>
+                      <p className={`font-semibold ${headingTextClass}`}>
+                        Chapter {chapter.chapter}
+                      </p>
+                      <p className={bodyTextClass}>
+                        {chapter.title}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-rows-[0fr] transition-all duration-300 group-hover:mt-4 group-hover:grid-rows-[1fr] group-focus:mt-4 group-focus:grid-rows-[1fr]">
+                    <div className="overflow-hidden">
+                      <div className="border-t border-[#E6A700]/40 pt-3">
+                        <p className={`mb-2 text-sm font-semibold ${isDarkMode ? 'text-[#E6A700]' : 'text-[#6D1B1B]'}`}>
+                          Important topics
+                        </p>
+                        <ul className={`grid gap-1.5 text-sm sm:grid-cols-2 ${bodyTextClass}`}>
+                          {syllabusTopicPreviews[selectedClass][chapter.chapter].map((topic) => (
+                            <li key={topic} className="flex items-start gap-2">
+                              <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#E6A700]" />
+                              <span>{topic}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {false && (
             <div className="space-y-6">
               {selectedClass === '9' ? (
                 <>
@@ -949,12 +1323,13 @@ export default function App() {
                 </>
               )}
             </div>
+            )}
           </motion.div>
         </motion.div>
       )}
 
       {/* FAQ and Admissions Section */}
-      <section id="faq" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      <section id="faq" className={`relative z-10 py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900/82' : 'bg-gray-50/78'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
             <h2 className={`text-3xl lg:text-4xl text-center mb-4 ${headingTextClass}`} style={{ fontWeight: 700 }}>
@@ -1038,7 +1413,7 @@ export default function App() {
       </section>
 
       {/* Results Section with Parallax */}
-      <section id="results" className="py-20 bg-[#6D1B1B] relative overflow-hidden">
+      <section id="results" className="relative z-10 py-20 bg-[#6D1B1B]/95 overflow-hidden">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 50, repeat: Infinity, ease: 'linear' }}
@@ -1073,7 +1448,7 @@ export default function App() {
       </section>
 
       {/* Testimonials Section with Real Testimonial */}
-      <section className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      <section className={`relative z-10 py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900/82' : 'bg-gray-50/78'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
             <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
@@ -1138,7 +1513,7 @@ export default function App() {
       </section>
 
       {/* Gallery Section */}
-      <section className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
+      <section className={`relative z-10 py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/82' : 'bg-white/78'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
             <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
@@ -1256,7 +1631,7 @@ export default function App() {
       ) : null}
 
       {/* Contact Section with EmailJS */}
-      <section id="contact" className={`py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-white'}`}>
+      <section id="contact" className={`relative z-10 py-20 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950/82' : 'bg-white/78'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <AnimatedSection>
             <h2 className={`text-3xl lg:text-4xl text-center mb-12 ${headingTextClass}`} style={{ fontWeight: 700 }}>
@@ -1405,7 +1780,7 @@ export default function App() {
       </section>
 
       {/* Footer with Animated Social Icons */}
-      <footer className={`text-white py-12 ${isDarkMode ? 'bg-slate-900 border-t border-white/10' : 'bg-[#6D1B1B]'}`}>
+      <footer className={`relative z-10 text-white py-12 ${isDarkMode ? 'bg-slate-900/95 border-t border-white/10' : 'bg-[#6D1B1B]/95'}`}>
         <div className="max-w-[1440px] mx-auto px-6">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <motion.div whileHover={{ y: -5 }}>
@@ -1425,6 +1800,11 @@ export default function App() {
                     </a>
                   </motion.li>
                 ))}
+                <motion.li whileHover={{ x: 5 }}>
+                  <a href="/chapters" className="hover:text-[#E6A700] transition-colors">
+                    Chapters
+                  </a>
+                </motion.li>
               </ul>
             </div>
 

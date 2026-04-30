@@ -79,6 +79,22 @@ export const heroFormulas: HeroFormula[] = [
   { id: 'nacl', label: 'NaCl', className: 'absolute bottom-[34%] left-[36%] text-3xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, -10, 0], rotate: [0, -3, 0] }, duration: 11.5 },
   { id: 'mgo', label: 'MgO', className: 'absolute bottom-[22%] left-[28%] text-3xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, 15, 0] }, duration: 12.5 },
   { id: 'glucose', label: 'C<sub>6</sub>H<sub>12</sub>O<sub>6</sub>', className: 'absolute top-[16%] left-[20%] text-3xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, -11, 0], rotate: [0, 2, 0] }, duration: 14 },
+  { id: 'fma', label: 'F=ma', className: 'absolute top-[34%] left-[8%] text-5xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, -26, 0], rotate: [0, -6, 0] }, duration: 8.5 },
+  { id: 'ohm', label: 'V=IR', className: 'absolute top-[72%] right-[10%] text-5xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, 24, 0], rotate: [0, 5, 0] }, duration: 9.5 },
+  { id: 'power', label: 'P=VI', className: 'absolute top-[44%] right-[30%] text-4xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, -22, 0], rotate: [0, 4, 0] }, duration: 10.5 },
+  { id: 'velocity', label: 'v=u+at', className: 'absolute top-[78%] left-[12%] text-4xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, 28, 0], rotate: [0, -5, 0] }, duration: 11 },
+  { id: 'distance', label: 's=ut+1/2at<sup>2</sup>', className: 'absolute top-[64%] left-[44%] text-3xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, -18, 0], rotate: [0, 3, 0] }, duration: 12 },
+  { id: 'momentum', label: 'p=mv', className: 'absolute top-[24%] right-[6%] text-5xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, 20, 0], rotate: [0, 7, 0] }, duration: 8 },
+  { id: 'work', label: 'W=Fd', className: 'absolute bottom-[8%] right-[24%] text-4xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, -24, 0], rotate: [0, -4, 0] }, duration: 9 },
+  { id: 'kinetic', label: 'KE=1/2mv<sup>2</sup>', className: 'absolute top-[6%] left-[52%] text-3xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, 18, 0], rotate: [0, 4, 0] }, duration: 13 },
+  { id: 'methane', label: 'CH<sub>4</sub>', className: 'absolute bottom-[42%] left-[6%] text-4xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, 22, 0], rotate: [0, 6, 0] }, duration: 7.5 },
+  { id: 'oxygen', label: 'O<sub>2</sub>', className: 'absolute top-[48%] left-[24%] text-5xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, -25, 0], rotate: [0, -5, 0] }, duration: 8.8 },
+  { id: 'nitric', label: 'HNO<sub>3</sub>', className: 'absolute top-[84%] left-[58%] text-4xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, 19, 0], rotate: [0, 5, 0] }, duration: 10.8 },
+  { id: 'calcium-hydroxide', label: 'Ca(OH)<sub>2</sub>', className: 'absolute top-[38%] right-[2%] text-3xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, -21, 0], rotate: [0, -4, 0] }, duration: 12.8 },
+  { id: 'sodium-carbonate', label: 'Na<sub>2</sub>CO<sub>3</sub>', className: 'absolute bottom-[4%] left-[42%] text-3xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, 26, 0], rotate: [0, 5, 0] }, duration: 9.8 },
+  { id: 'frequency', label: 'v=f&lambda;', className: 'absolute top-[58%] left-[68%] text-4xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, -20, 0], rotate: [0, -6, 0] }, duration: 11.8 },
+  { id: 'charge', label: 'Q=It', className: 'absolute top-[6%] left-[4%] text-4xl', darkClassName: 'text-slate-200', lightClassName: 'text-[#4A1111]', animation: { y: [0, 23, 0], rotate: [0, 7, 0] }, duration: 8.2 },
+  { id: 'resistance', label: 'R=&rho;l/A', className: 'absolute bottom-[12%] right-[4%] text-3xl', darkClassName: 'text-slate-300', lightClassName: 'text-[#4A1111]', animation: { y: [0, -18, 0], rotate: [0, -5, 0] }, duration: 10.2 },
 ];
 
 export const batchDetails = [
